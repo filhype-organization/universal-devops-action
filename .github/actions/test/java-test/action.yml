@@ -1,0 +1,32 @@
+name: Java Tests
+description: 'Run tests for Java projects'
+
+inputs:
+  test_options:
+    description: 'Additional options for test commands'
+    required: false
+    default: ''
+  java_version:
+    description: 'Java version to use'
+    required: false
+    default: '21'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ inputs.java_version }}
+        distribution: 'temurin'
+        cache: 'maven'
+
+    - name: Run tests with Maven
+      if: hashFiles('pom.xml')
+      shell: bash
+      run: mvn test ${{ inputs.test_options }}
+
+    - name: Run tests with Gradle
+      if: hashFiles('build.gradle')
+      shell: bash
+      run: ./gradlew test ${{ inputs.test_options }}

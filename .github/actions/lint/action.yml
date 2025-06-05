@@ -1,0 +1,41 @@
+name: Code Quality Checks
+description: 'Run linting and code quality checks'
+
+inputs:
+  sql_lint_path:
+    description: 'Path to SQL files for linting'
+    required: false
+    default: 'models'
+  sql_lint_config:
+    description: 'Path to SQLFluff config file'
+    required: false
+    default: '.sqlfluff'
+  sql_lint_version:
+    description: 'SQLFluff version'
+    required: false
+    default: '3.3.1'
+  github_token:
+    description: 'GitHub token for authentication'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Super-linter
+      uses: super-linter/super-linter@v7.4.0
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+
+    - name: Run Codacy Analysis CLI
+      uses: codacy/codacy-analysis-cli-action@master
+
+    - name: Run SQL Lint
+      if: hashFiles('**/*.sql')
+      uses: yu-iskw/action-sqlfluff@v4
+      with:
+        github_token: ${{ inputs.github_token }}
+        reporter: github-pr-review
+        sqlfluff_version: ${{ inputs.sql_lint_version }}
+        sqlfluff_command: "fix"
+        config: "${{ github.workspace }}/${{ inputs.sql_lint_config }}"
+        paths: "${{ github.workspace }}/${{ inputs.sql_lint_path }}"

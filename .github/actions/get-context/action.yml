@@ -1,0 +1,48 @@
+name: Get Context
+description: 'Get project context to determine language and framework'
+
+runs:
+  using: composite
+  steps:
+    - id: project-type
+      shell: bash
+      run: |
+        # Initialize output variables
+        echo "java=false" >> $GITHUB_OUTPUT
+        echo "pom=false" >> $GITHUB_OUTPUT
+        echo "gradle=false" >> $GITHUB_OUTPUT
+        echo "angular=false" >> $GITHUB_OUTPUT
+        echo "spring=false" >> $GITHUB_OUTPUT
+        echo "quarkus=false" >> $GITHUB_OUTPUT
+
+        # Function to detect frameworks in a file
+        detect_frameworks() {
+          local file=$1
+          if grep -q "org.springframework.boot" "$file"; then
+            echo "Found Spring Boot dependency"
+            echo "spring=true" >> $GITHUB_OUTPUT
+          elif grep -q "io.quarkus" "$file"; then
+            echo "Found Quarkus dependency"
+            echo "quarkus=true" >> $GITHUB_OUTPUT
+          fi
+        }
+
+        # Project type detection
+        if [ -f "pom.xml" ]; then 
+          echo "Has pom.xml file in root directory"
+          echo "java=true" >> $GITHUB_OUTPUT
+          echo "pom=true" >> $GITHUB_OUTPUT
+          detect_frameworks "pom.xml"
+          
+        elif [ -f "build.gradle" ]; then
+          echo "Has build.gradle file in root directory"
+          echo "java=true" >> $GITHUB_OUTPUT
+          echo "gradle=true" >> $GITHUB_OUTPUT
+          detect_frameworks "build.gradle"
+          
+        elif [ -f "angular.json" ]; then 
+          echo "Has angular.json file in root directory"
+          echo "angular=true" >> $GITHUB_OUTPUT
+        else
+          echo "No recognized project files found"
+        fi

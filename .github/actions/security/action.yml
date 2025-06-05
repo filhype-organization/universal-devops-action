@@ -1,0 +1,16 @@
+name: Security Checks
+description: 'Run security scans and secret detection'
+
+inputs:
+  trufflehog_args:
+    description: 'Additional arguments for TruffleHog'
+    required: false
+    default: '--results=verified,unknown'
+
+runs:
+  using: composite
+  steps:
+    - name: Secret Scanning
+      uses: trufflesecurity/trufflehog@main
+      with:
+        extra_args: ${{ inputs.trufflehog_args }}

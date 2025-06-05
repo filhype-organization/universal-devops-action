@@ -1,0 +1,158 @@
+name: Universal Devops Action
+
+on:
+  workflow_call:
+    inputs:
+      build_options:
+        description: 'Additional options build commands'
+        required: false
+        type: string
+        default: ''
+      test_options:
+        description: 'Additional options test commands'
+        required: false
+        type: string
+        default: ''
+      java_version:
+        description: 'Java version'
+        required: false
+        type: string
+        default: '21'
+      node_version:
+        description: 'Node.js version'
+        required: false
+        type: string
+        default: '22'
+      build_type:
+        description: 'Build type for Java projects (legacy or native)'
+        required: false
+        type: string
+        default: 'legacy'
+      build_platform:
+        description: 'Target platform for container builds (arm64 or x86)'
+        required: false
+        type: string
+        default: 'x86'
+      container_build:
+        description: 'Whether to build and push container image for Angular'
+        required: false
+        type: boolean
+        default: false
+      sql_lint_path:
+        description: 'Path to SQL files for linting'
+        required: false
+        type: string
+        default: 'models'
+      sql_lint_config:
+        description: 'Path to SQLFluff config file'
+        required: false
+        type: string
+        default: '.sqlfluff'
+      trufflehog_args:
+        description: 'Additional arguments for TruffleHog'
+        required: false
+        type: string
+        default: '--results=verified,unknown'
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+      DOCKER_USERNAME:
+        required: false
+      DOCKER_TOKEN:
+        required: false
+
+jobs:
+  get-context:
+    runs-on: ubuntu-latest    
+    outputs:
+      java: ${{ steps.project-type.outputs.java }}
+      pom: ${{ steps.project-type.outputs.pom }}
+      gradle: ${{ steps.project-type.outputs.gradle }}
+      angular: ${{ steps.project-type.outputs.angular }}
+      spring: ${{ steps.project-type.outputs.spring }}
+      quarkus: ${{ steps.project-type.outputs.quarkus }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Get Context
+        id: project-type
+        uses: ./.github/actions/get-context
+  
+  lint:
+    runs-on: ubuntu-latest
+    needs: get-context
+    continue-on-error: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run Linters
+        uses: ./.github/actions/lint
+        with:
+          sql_lint_path: ${{ inputs.sql_lint_path }}
+          sql_lint_config: ${{ inputs.sql_lint_config }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  security:
+    runs-on: ubuntu-latest
+    needs: get-context
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run Security Checks
+        uses: ./.github/actions/security
+        with:
+          trufflehog_args: ${{ inputs.trufflehog_args }}
+
+  java-build:
+    runs-on: ubuntu-latest
+    needs: [lint, security, get-context]
+    if: needs.get-context.outputs.java == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Build Java Project
+        uses: ./.github/actions/build/java-build
+        with:
+          java_version: ${{ inputs.java_version }}
+          build_options: ${{ inputs.build_options }}
+          build_type: ${{ inputs.build_type }}
+          build_platform: ${{ inputs.build_platform }}
+          docker_username: ${{ secrets.DOCKER_USERNAME }}
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
+          is_quarkus: ${{ needs.get-context.outputs.quarkus }}
+
+  angular-build:
+    runs-on: ubuntu-latest
+    needs: [lint, security, get-context]
+    if: needs.get-context.outputs.angular == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Build Angular Project
+        uses: ./.github/actions/build/angular-build
+        with:
+          node_version: ${{ inputs.node_version }}
+          build_options: ${{ inputs.build_options }}
+          build_platform: ${{ inputs.build_platform }}
+          container_build: ${{ inputs.container_build }}
+          docker_username: ${{ secrets.DOCKER_USERNAME }}
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [java-build, angular-build, get-context]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run Java Tests
+        if: needs.get-context.outputs.java == 'true'
+        uses: ./.github/actions/test/java-test
+        with:
+          test_options: ${{ inputs.test_options }}
+          java_version: ${{ inputs.java_version }}
+      - name: Run Angular Tests
+        if: needs.get-context.outputs.angular == 'true'
+        uses: ./.github/actions/test/angular-test
+        with:
+          build_options: ${{ inputs.build_options }}
+          node_version: ${{ inputs.node_version }}
