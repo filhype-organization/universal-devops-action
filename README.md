@@ -122,6 +122,21 @@ For Java projects, it also detects the framework:
 
 Note: All build tools and dependencies are automatically handled by the GitHub Actions runner, no local installation is required.
 
+## Container Version Tagging
+
+For container builds, the image version tag is determined in the following order of priority:
+1. If `tag` input is provided, use it directly
+2. If running on a Git tag (e.g., v1.2.3), use the tag version
+3. Otherwise, use the short Git commit SHA
+
+Additionally, if not building from the main branch and no custom tag is provided, "-snapshot" is appended to the version.
+
+Examples:
+- Custom tag input "1.0.0" → `image:1.0.0`
+- Git tag "v1.2.3" → `image:1.2.3`
+- Commit abc123f on main → `image:abc123f`
+- Commit def456a on feature branch → `image:def456a-snapshot`
+
 ## Inputs
 
 | Name | Description | Required | Default |
@@ -131,12 +146,15 @@ Note: All build tools and dependencies are automatically handled by the GitHub A
 | build_type | Build type for Java projects | No | legacy |
 | build_platform | Target platform for containers | No | x86 |
 | container_build | Enable container builds | No | false |
-| docker_image_name | Name of your Docker image (required if container_build is true) | Conditional | N/A |
+| docker_image_name | Name of your Docker image | Conditional* | N/A |
 | build_options | Additional build options | No | '' |
 | test_options | Additional test options | No | '' |
 | sql_lint_path | Path to SQL files | No | models |
 | sql_lint_config | SQLFluff config file | No | .sqlfluff |
 | trufflehog_args | TruffleHog arguments | No | --results=verified,unknown |
+| tag | Override version tag for Docker images | No | N/A |
+
+\* Required if container_build is true
 
 ## Secrets
 
