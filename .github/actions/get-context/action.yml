@@ -1,12 +1,19 @@
 name: Get Context
 description: 'Get project context to determine language and framework'
 
+inputs:
+  working-directory:
+    description: 'Directory containing the project to analyze'
+    required: true
+    default: '.'
+
 runs:
   using: composite
   steps:
     - id: project-type
       shell: bash
       run: |
+        cd ${{ inputs.working-directory }}
         # Initialize output variables
         echo "java=false" >> $GITHUB_OUTPUT
         echo "pom=false" >> $GITHUB_OUTPUT
