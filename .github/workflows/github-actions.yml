@@ -79,18 +79,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          path: project-to-analyze
-      - name: Checkout universal-devops-action
-        uses: actions/checkout@v4
-        with:
-          repository: filhype-organization/universal-devops-action
-          path: .github/actions
       - name: Get Context
         id: project-type
-        uses: ./.github/actions/get-context
-        with:
-          working-directory: ./project-to-analyze
+        uses: filhype-organization/universal-devops-action/.github/actions/get-context
   
   lint:
     runs-on: ubuntu-latest
