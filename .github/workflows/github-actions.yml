@@ -54,7 +54,8 @@ on:
         type: string
         default: '--results=verified,unknown'
     secrets:
-      GITHUB_TOKEN:
+      GH_TOKEN:
+        description: 'GitHub token for authentication'
         required: true
       DOCKER_USERNAME:
         required: false
@@ -90,7 +91,7 @@ jobs:
         with:
           sql_lint_path: ${{ inputs.sql_lint_path }}
           sql_lint_config: ${{ inputs.sql_lint_config }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GH_TOKEN }}
 
   security:
     runs-on: ubuntu-latest
