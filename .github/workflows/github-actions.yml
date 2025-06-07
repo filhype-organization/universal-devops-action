@@ -81,7 +81,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Get Context
         id: project-type
-        uses: filhype-organization/universal-devops-action/.github/actions/get-context
+        uses: filhype-organization/universal-devops-action/.github/actions/get-context@main
   
   lint:
     runs-on: ubuntu-latest
