@@ -40,9 +40,8 @@ on:
   push:
   pull_request:
 
-jobs:
-  build:
-    uses: your-org/universal-devops-action/.github/workflows/github-actions.yml@main
+jobs:  build:
+    uses: filhype-organization/universal-devops-action/.github/workflows/github-actions.yml@v1
     with:
       # Optional parameters - defaults shown
       java_version: '21'              # Java version
