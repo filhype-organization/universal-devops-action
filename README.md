@@ -45,10 +45,10 @@ jobs:
     with:
       # Optional parameters - defaults shown
       java_version: '21'              # Java version
-      node_version: '22'              # Node.js version
-      build_type: 'legacy'           # 'legacy' or 'native' (for Quarkus)
+      node_version: '22'              # Node.js version      build_type: 'legacy'           # 'legacy' or 'native' (for Quarkus)
       build_platform: 'x86'          # 'x86' or 'arm64'
       container_build: false         # Enable container builds
+      docker_image_name: 'org/repo'  # Required if container_build is true
       build_options: ''             # Additional build options
       test_options: ''              # Additional test options
       sql_lint_path: 'models'       # Path to SQL files
@@ -122,11 +122,6 @@ For Java projects, it also detects the framework:
 
 Note: All build tools and dependencies are automatically handled by the GitHub Actions runner, no local installation is required.
 
-## Environment Variables
-
-For container builds, the following environment variable is required:
-- `DOCKER_IMAGE_NAME`: The name of your Docker image (e.g., 'username/repo')
-
 ## Inputs
 
 | Name | Description | Required | Default |
@@ -136,6 +131,7 @@ For container builds, the following environment variable is required:
 | build_type | Build type for Java projects | No | legacy |
 | build_platform | Target platform for containers | No | x86 |
 | container_build | Enable container builds | No | false |
+| docker_image_name | Name of your Docker image (required if container_build is true) | Conditional | N/A |
 | build_options | Additional build options | No | '' |
 | test_options | Additional test options | No | '' |
 | sql_lint_path | Path to SQL files | No | models |

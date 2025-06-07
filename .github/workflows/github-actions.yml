@@ -53,6 +53,10 @@ on:
         required: false
         type: string
         default: '--results=verified,unknown'
+      docker_image_name:
+        description: 'Docker image name (required for container builds)'
+        required: false
+        type: string
     secrets:
       GH_TOKEN:
         description: 'GitHub token for authentication'
@@ -120,6 +124,7 @@ jobs:
           build_platform: ${{ inputs.build_platform }}
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
+          docker_image_name: ${{ inputs.docker_image_name }}
           is_quarkus: ${{ needs.get-context.outputs.quarkus }}
 
   angular-build:
@@ -138,6 +143,7 @@ jobs:
           container_build: ${{ inputs.container_build }}
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
+          docker_image_name: ${{ inputs.docker_image_name }}
 
   test:
     runs-on: ubuntu-latest

@@ -24,10 +24,16 @@ inputs:
   docker_token:
     description: 'Docker Hub token for authentication'
     required: false
+  docker_image_name:
+    description: 'Docker image name with repository (e.g. username/repo)'
+    required: true
   is_quarkus:
     description: 'Whether the project is a Quarkus project'
     required: false
     default: 'false'
+  tag:
+    description: 'Override version tag (takes precedence over Git tags and commit SHA)'
+    required: false
 
 runs:
   using: composite
@@ -107,17 +113,29 @@ runs:
         username: ${{ inputs.docker_username }}
         password: ${{ inputs.docker_token }}
 
-    - name: Get version from tag
+    - name: Get version
       if: inputs.build_type == 'native' && inputs.is_quarkus == 'true' && inputs.docker_username != ''
       shell: bash
       run: |
-        BASE_VERSION=${GITHUB_REF#refs/tags/v}
-        BRANCH_NAME=${GITHUB_REF#refs/heads/}
-        if [ "$BRANCH_NAME" != "main" ]; then
-          echo "version=${BASE_VERSION}-SNAPSHOT" >> $GITHUB_ENV
+        # Check if tag input is provided
+        if [ -n "${{ inputs.tag }}" ]; then
+          VERSION="${{ inputs.tag }}"
         else
-          echo "version=${BASE_VERSION}" >> $GITHUB_ENV
+          # Check if we're on a tag
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            # Use short commit SHA
+            VERSION=$(git rev-parse --short HEAD)
+          fi
+
+          # Add snapshot suffix if not on main branch
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          if [ "$BRANCH_NAME" != "main" ]; then
+            VERSION="${VERSION}-snapshot"
+          fi
         fi
+        echo "version=${VERSION}" >> $GITHUB_ENV
 
     - name: Build and push Docker image
       if: inputs.build_type == 'native' && inputs.is_quarkus == 'true' && inputs.docker_username != ''
@@ -128,4 +146,4 @@ runs:
         platforms: linux/${{ inputs.build_platform }}
         push: true
         tags: |
-          ${{ vars.DOCKER_IMAGE_NAME }}:${{ env.version }}-${{ inputs.build_platform }}
+          ${{ inputs.docker_image_name }}:${{ env.version }}
