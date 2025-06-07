@@ -1,7 +1,10 @@
 # Universal DevOps Action
 
-A reusable GitHub Actions workflow that provides a complete CI pipeline with support for Java (Spring/Quarkus) and Angular projects. This workflow automatically detects your project type and executes the appropriate build, test, and quality check steps.
+<img src="asset/universal-github-action.png" alt="Universal GitHub Action" width="300" style="display: block; margin: auto;"/>
 
+<p></p>
+A reusable GitHub Actions workflowthat provides a complete CI pipeline with support for Java (Spring/Quarkus) and Angular projects. This workflow automatically detects your project type and executes the appropriate build, test, and quality check steps.
+</p>
 ## Features
 
 - 🔍 Automatic project type detection
@@ -35,9 +38,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
 
 jobs:
   build:
