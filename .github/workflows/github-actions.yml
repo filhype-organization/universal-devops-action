@@ -2,76 +2,74 @@ name: Universal Devops Action
 
 on:
   workflow_call:
-    inputs:
-      build_options:
-        description: 'Additional options build commands'
-        required: false
-        type: string
-        default: ''
-      test_options:
-        description: 'Additional options test commands'
-        required: false
-        type: string
-        default: ''
-      java_version:
-        description: 'Java version'
-        required: false
-        type: string
-        default: '21'
-      node_version:
-        description: 'Node.js version'
-        required: false
-        type: string
-        default: '22'
-      build_type:
-        description: 'Build type for Java projects (legacy or native)'
-        required: false
-        type: string
-        default: 'legacy'
-      build_platform:
-        description: 'Target platform for container builds (arm64 or x86)'
-        required: false
-        type: string
-        default: 'x86'
-      container_build:
-        description: 'Whether to build and push container image for Angular'
-        required: false
-        type: boolean
-        default: false
-      sql_lint_path:
-        description: 'Path to SQL files for linting'
-        required: false
-        type: string
-        default: 'models'
-      sql_lint_config:
-        description: 'Path to SQLFluff config file'
-        required: false
-        type: string
-        default: '.sqlfluff'
-      trufflehog_args:
-        description: 'Additional arguments for TruffleHog'
-        required: false
-        type: string
-        default: '--results=verified,unknown'
-      docker_image_name:
-        description: 'Docker image name (required for container builds)'
-        required: false
-        type: string
-    secrets:
-      GH_TOKEN:
-        description: 'GitHub token for authentication'
-        required: true
-      DOCKER_USERNAME:
-        required: false
-      DOCKER_TOKEN:
-        required: false
+    # inputs:
+    #   build_options:
+    #     description: 'Additional options build commands'
+    #     required: false
+    #     type: string
+    #     default: ''
+    #   test_options:
+    #     description: 'Additional options test commands'
+    #     required: false
+    #     type: string
+    #     default: ''
+    #   java_version:
+    #     description: 'Java version'
+    #     required: false
+    #     type: string
+    #     default: '21'
+    #   node_version:
+    #     description: 'Node.js version'
+    #     required: false
+    #     type: string
+    #     default: '22'
+    #   build_type:
+    #     description: 'Build type for Java projects (legacy or native)'
+    #     required: false
+    #     type: string
+    #     default: 'legacy'
+    #   build_platform:
+    #     description: 'Target platform for container builds (arm64 or x86)'
+    #     required: false
+    #     type: string
+    #     default: 'x86'
+    #   container_build:
+    #     description: 'Whether to build and push container image for Angular'
+    #     required: false
+    #     type: boolean
+    #     default: false
+    #   sql_lint_path:
+    #     description: 'Path to SQL files for linting'
+    #     required: false
+    #     type: string
+    #     default: 'models'
+    #   sql_lint_config:
+    #     description: 'Path to SQLFluff config file'
+    #     required: false
+    #     type: string
+    #     default: '.sqlfluff'
+    #   trufflehog_args:
+    #     description: 'Additional arguments for TruffleHog'
+    #     required: false
+    #     type: string
+    #     default: '--results=verified,unknown'
+    #   docker_image_name:
+    #     description: 'Docker image name (required for container builds)'
+    #     required: false
+    #     type: string
+    # secrets:
+    #   GH_TOKEN:
+    #     description: 'GitHub token for authentication'
+    #     required: true
+    #   DOCKER_USERNAME:
+    #     required: false
+    #   DOCKER_TOKEN:
+    #     required: false
 
 jobs:
   example_job:
     runs-on: ubuntu-latest
     steps:
-      - name: Afficher le chemin de config
-        run: echo "Config path is ${{ inputs.config-path }}"
       - name: Utiliser le token secret
         run: echo "Using secret token"
   # get-context:
