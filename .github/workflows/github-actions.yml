@@ -86,3 +86,6 @@ jobs:
         run: echo "firstword=hello" >> $GITHUB_OUTPUT
       - id: step2
         run: echo "secondword=world" >> $GITHUB_OUTPUT
+      - name: Get Context
+        id: project-type
+        uses: ./.universal-devops-action/.github/actions/get-context
