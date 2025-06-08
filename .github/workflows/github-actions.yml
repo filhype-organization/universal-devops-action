@@ -77,15 +77,12 @@ jobs:
       spring: ${{ steps.project-type.outputs.spring }}
       quarkus: ${{ steps.project-type.outputs.quarkus }}
     steps:
-      - name: Checkout code
+      - name: Checkout universal-devops-action
         uses: actions/checkout@v4
-
-      # - name: Checkout universal-devops-action
-      #   uses: actions/checkout@v4
-      #   with:
-      #     repository: filhype-organization/universal-devops-action
-      #     path: .universal-devops-action
-      #     ref: main
+        with:
+          repository: filhype-organization/universal-devops-action
+          path: .universal-devops-action
+          ref: main
 
       # - name: Get Context
       #   id: project-type
