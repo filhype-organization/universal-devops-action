@@ -67,22 +67,30 @@ on:
         required: false
 
 jobs:
-  get-context:
-    runs-on: ubuntu-latest    
-    outputs:
-      java: ${{ steps.project-type.outputs.java }}
-      pom: ${{ steps.project-type.outputs.pom }}
-      gradle: ${{ steps.project-type.outputs.gradle }}
-      angular: ${{ steps.project-type.outputs.angular }}
-      spring: ${{ steps.project-type.outputs.spring }}
-      quarkus: ${{ steps.project-type.outputs.quarkus }}
+  example_job:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout universal-devops-action
-        uses: actions/checkout@v4
-        with:
-          repository: filhype-organization/universal-devops-action
-          path: .universal-devops-action
-          ref: main
+      - name: Afficher le chemin de config
+        run: echo "Config path is ${{ inputs.config-path }}"
+      - name: Utiliser le token secret
+        run: echo "Using secret token"
+  # get-context:
+    
+    # runs-on: ubuntu-latest    
+    # outputs:
+    #   java: ${{ steps.project-type.outputs.java }}
+    #   pom: ${{ steps.project-type.outputs.pom }}
+    #   gradle: ${{ steps.project-type.outputs.gradle }}
+    #   angular: ${{ steps.project-type.outputs.angular }}
+    #   spring: ${{ steps.project-type.outputs.spring }}
+    #   quarkus: ${{ steps.project-type.outputs.quarkus }}
+    # steps:
+    #   - name: Checkout universal-devops-action
+    #     uses: actions/checkout@v4
+    #     with:
+    #       repository: filhype-organization/universal-devops-action
+    #       path: .universal-devops-action
+    #       ref: main
 
       # - name: Get Context
       #   id: project-type
