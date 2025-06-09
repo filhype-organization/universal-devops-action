@@ -57,6 +57,11 @@ on:
         description: 'Docker image name (required for container builds)'
         required: false
         type: string
+      sha-branch:
+        description: 'Branch SHA or branch name'
+        required: false
+        type: string
+        default: 'main'
     secrets:
       GH_TOKEN:
         description: 'GitHub token for authentication'
@@ -88,4 +93,4 @@ jobs:
         run: echo "secondword=world" >> $GITHUB_OUTPUT
       - name: Get Context
         id: project-type
-        uses: filhype-organization/universal-devops-action/.github/actions/get-context@test
+        uses: filhype-organization/universal-devops-action/.github/actions/get-context@${{ inputs.sha-branch }}
