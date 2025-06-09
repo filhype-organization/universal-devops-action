@@ -57,11 +57,6 @@ on:
         description: 'Docker image name (required for container builds)'
         required: false
         type: string
-      sha-branch:
-        description: 'Branch SHA or branch name'
-        required: false
-        type: string
-        default: 'main'
     secrets:
       GH_TOKEN:
         description: 'GitHub token for authentication'
@@ -89,15 +84,8 @@ jobs:
       spring: ${{ steps.project-type.outputs.spring }}
       quarkus: ${{ steps.project-type.outputs.quarkus }}
     steps:
-      - name: Checkout universal-devops-action
+      - name: Checkout code
         uses: actions/checkout@v4
-        
-      - name: Checkout universal-devops-action
-        uses: actions/checkout@v4
-        with:
-          repository: filhype-organization/universal-devops-action
-          path: .universal-devops-action
-          ref: main
 
       - name: Get Context
         id: project-type
