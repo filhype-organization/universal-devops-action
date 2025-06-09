@@ -88,4 +88,4 @@ jobs:
         run: echo "secondword=world" >> $GITHUB_OUTPUT
       - name: Get Context
         id: project-type
-        uses: ./.github/actions/get-context
+        uses: filhype-organization/universal-devops-action/.github/actions/get-context@test
