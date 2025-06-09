@@ -91,6 +91,9 @@ jobs:
     steps:
       - name: Checkout universal-devops-action
         uses: actions/checkout@v4
+        
+      - name: Checkout universal-devops-action
+        uses: actions/checkout@v4
         with:
           repository: filhype-organization/universal-devops-action
           path: .universal-devops-action
