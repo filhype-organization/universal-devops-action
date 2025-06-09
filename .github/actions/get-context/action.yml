@@ -47,4 +47,4 @@ runs:
       fi
 
       # Export final en une seule commande
-      echo "outputs=$outputs" >> $GITHUB_OUTPUT
+      echo "outputs=$(echo "$outputs" | jq -c '.')" >> $GITHUB_OUTPUT
