@@ -14,6 +14,7 @@ runs:
       shell: bash
       run: |
         cd ${{ inputs.working-directory }}
+        ls -lRt
         # Initialize output variables
         echo "java=false" >> $GITHUB_OUTPUT
         echo "pom=false" >> $GITHUB_OUTPUT
