@@ -91,9 +91,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: test
+      - name: echo test
+        id: echo-test
         run: echo ${{needs.get-context.outputs.java}}
-        
+
       - name: Run Java Tests
         if: ${{needs.get-context.outputs.java}} == true
         uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@test
