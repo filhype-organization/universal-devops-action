@@ -91,34 +91,28 @@ jobs:
         id: project-type
         uses: filhype-organization/universal-devops-action/.github/actions/get-context@test
   
-  lint:
+  test:
     runs-on: ubuntu-latest
-    needs: get-context
-    continue-on-error: true
+    needs: [get-context]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run Linters
-        uses: filhype-organization/universal-devops-action/.github/actions/lint@test
+      - name: Run Java Tests
+        if: needs.get-context.outputs.java == 'true'
+        uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@test
         with:
-          sql_lint_path: ${{ inputs.sql_lint_path }}
-          sql_lint_config: ${{ inputs.sql_lint_config }}
-          github_token: ${{ secrets.GH_TOKEN }}
-
-  security:
-    runs-on: ubuntu-latest
-    needs: get-context
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Run Security Checks
-        uses: filhype-organization/universal-devops-action/.github/actions/security@test
+          test_options: ${{ inputs.test_options }}
+          java_version: ${{ inputs.java_version }}
+      - name: Run Angular Tests
+        if: needs.get-context.outputs.angular == 'true'
+        uses: ./.github/actions/test/angular-test
         with:
-          trufflehog_args: ${{ inputs.trufflehog_args }}
+          build_options: ${{ inputs.build_options }}
+          node_version: ${{ inputs.node_version }}
 
   java-build:
     runs-on: ubuntu-latest
-    needs: [lint, security, get-context]
+    needs: [test]
     if: needs.get-context.outputs.java == 'true'
     steps:
       - name: Checkout code
@@ -137,7 +131,7 @@ jobs:
 
   angular-build:
     runs-on: ubuntu-latest
-    needs: [lint, security, get-context]
+    needs: [test]
     if: needs.get-context.outputs.angular == 'true'
     steps:
       - name: Checkout code
@@ -153,21 +147,30 @@ jobs:
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
 
-  test:
+  lint:
     runs-on: ubuntu-latest
-    needs: [java-build, angular-build, get-context]
+    needs: [java-build, angular-build]
+    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run Java Tests
-        if: needs.get-context.outputs.java == 'true'
-        uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@test
+      - name: Run Linters
+        uses: filhype-organization/universal-devops-action/.github/actions/lint@test
         with:
-          test_options: ${{ inputs.test_options }}
-          java_version: ${{ inputs.java_version }}
-      - name: Run Angular Tests
-        if: needs.get-context.outputs.angular == 'true'
-        uses: ./.github/actions/test/angular-test
+          sql_lint_path: ${{ inputs.sql_lint_path }}
+          sql_lint_config: ${{ inputs.sql_lint_config }}
+          github_token: ${{ secrets.GH_TOKEN }}
+
+  security:
+    runs-on: ubuntu-latest
+    needs: [java-build, angular-build]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run Security Checks
+        uses: filhype-organization/universal-devops-action/.github/actions/security@test
         with:
-          build_options: ${{ inputs.build_options }}
-          node_version: ${{ inputs.node_version }}
+          trufflehog_args: ${{ inputs.trufflehog_args }}
+
+
+
