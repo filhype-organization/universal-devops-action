@@ -25,11 +25,11 @@ runs:
         cache: 'maven'
 
     - name: Run tests with Maven
-      if: ${ inputs.project_type == 'maven' }
+      if: inputs.project_type == 'maven'
       shell: bash
       run: mvn test ${{ inputs.test_options }}
 
     - name: Run tests with Gradle
-      if: ${ inputs.project_type == 'gradle' }
+      if: inputs.project_type == 'gradle'
       shell: bash
       run: ./gradlew test ${{ inputs.test_options }}
