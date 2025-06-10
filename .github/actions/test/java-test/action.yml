@@ -10,6 +10,9 @@ inputs:
     description: 'Java version to use'
     required: false
     default: '21'
+  project_type:
+    description: 'Type of Java project (maven or gradle)'
+    required: true
 
 runs:
   using: composite
@@ -22,11 +25,11 @@ runs:
         cache: 'maven'
 
     - name: Run tests with Maven
-      if: hashFiles('pom.xml')
+      if: ${ inputs.project_type == 'maven' }
       shell: bash
       run: mvn test ${{ inputs.test_options }}
 
     - name: Run tests with Gradle
-      if: hashFiles('build.gradle')
+      if: ${ inputs.project_type == 'gradle' }
       shell: bash
       run: ./gradlew test ${{ inputs.test_options }}

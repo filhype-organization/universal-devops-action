@@ -93,6 +93,7 @@ jobs:
         with:
           test_options: ${{ inputs.test_options }}
           java_version: ${{ inputs.java_version }}
+          project_type: ${{ (fromJSON(needs.get-context.outputs.outputs).pom && 'maven') || 'gradle' }}
 
       - name: Run Angular Tests
         if: fromJSON(needs.get-context.outputs.outputs).angular
