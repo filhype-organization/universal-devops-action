@@ -101,11 +101,10 @@ jobs:
         with:
           build_options: ${{ inputs.build_options }}
           node_version: ${{ inputs.node_version }}
-
   java-build:
     runs-on: ubuntu-latest
     needs: [test, get-context]
-    if: ${{needs.get-context.outputs.java}} == 'true'
+    if: fromJSON(needs.get-context.outputs.outputs).java == true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -119,12 +118,11 @@ jobs:
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
-          is_quarkus: ${{ needs.get-context.outputs.quarkus }}
-
+          is_quarkus: ${{ fromJSON(needs.get-context.outputs.outputs).quarkus }}
   angular-build:
     runs-on: ubuntu-latest
     needs: [test, get-context]
-    if: ${{needs.get-context.outputs.angular}} == 'true'
+    if: fromJSON(needs.get-context.outputs.outputs).angular == true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
