@@ -79,22 +79,20 @@ jobs:
         id: project-type
         uses: filhype-organization/universal-devops-action/.github/actions/get-context@test
       
-      - name: Set Output
-        id: set-output
-        shell: bash
-        run: |
-          if [ -f "context.json" ]; then
-            content=$(cat context.json)
-            # Escape content for GitHub Actions
-            content="${content//'%'/'%25'}"
-            content="${content//$'\n'/'%0A'}"
-            content="${content//$'\r'/'%0D'}"
-            echo "result=${content}" >> $GITHUB_OUTPUT
-          else
-            echo "result={}" >> $GITHUB_OUTPUT
-          fi
-          echo "Context: ${content}"
-
+      # - name: Set Output
+      #   id: set-output
+      #   shell: bash
+      #   run: |
+      #     if [ -f "context.json" ]; then
+      #       content=$(cat context.json)
+      #       # Escape content for GitHub Actions
+      #       content="${content//'%'/'%25'}"
+      #       content="${content//$'\n'/'%0A'}"
+      #       content="${content//$'\r'/'%0D'}"
+      #       echo "result=${content}" >> $GITHUB_OUTPUT
+      #     else
+      #       echo "result={}" >> $GITHUB_OUTPUT
+      #     fi
   
   test:
     runs-on: ubuntu-latest
