@@ -70,7 +70,7 @@ jobs:
   get-context:
     runs-on: ubuntu-latest    
     outputs:
-      outputs: ${{ steps.project-type.outputs.result }}
+      context: ${{ steps.set-output.outputs.result }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -84,10 +84,16 @@ jobs:
         shell: bash
         run: |
           if [ -f "context.json" ]; then
-            echo "result=$(cat context.json)" >> $GITHUB_OUTPUT
+            content=$(cat context.json)
+            # Escape content for GitHub Actions
+            content="${content//'%'/'%25'}"
+            content="${content//$'\n'/'%0A'}"
+            content="${content//$'\r'/'%0D'}"
+            echo "result=${content}" >> $GITHUB_OUTPUT
           else
             echo "result={}" >> $GITHUB_OUTPUT
           fi
+          echo "Context: ${content}
 
   
   test:
@@ -100,18 +106,18 @@ jobs:
       - name: Display Context
         shell: bash
         run: |
-          echo "Context: ${{ needs.get-context.outputs.outputs }}"
+          echo "Context: ${{ needs.get-context.outputs.context }}"
 
       - name: Run Java Tests
-        if: fromJSON(needs.get-context.outputs.outputs).java
+        if: fromJSON(needs.get-context.outputs.context).java
         uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@test
         with:
           test_options: ${{ inputs.test_options }}
           java_version: ${{ inputs.java_version }}
-          project_type: ${{ (fromJSON(needs.get-context.outputs.outputs).pom && 'maven') || 'gradle' }}
+          project_type: ${{ (fromJSON(needs.get-context.outputs.context).pom && 'maven') || 'gradle' }}
 
       - name: Run Angular Tests
-        if: fromJSON(needs.get-context.outputs.outputs).angular
+        if: fromJSON(needs.get-context.outputs.context).angular
         uses: filhype-organization/universal-devops-action/.github/actions/test/angular-test@test
         with:
           build_options: ${{ inputs.build_options }}
@@ -119,7 +125,7 @@ jobs:
   java-build:
     runs-on: ubuntu-latest
     needs: [test, get-context]
-    if: fromJSON(needs.get-context.outputs.outputs).java == true
+    if: fromJSON(needs.get-context.outputs.context).java == true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -133,11 +139,11 @@ jobs:
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
-          is_quarkus: ${{ fromJSON(needs.get-context.outputs.outputs).quarkus }}
+          is_quarkus: ${{ fromJSON(needs.get-context.outputs.context).quarkus }}
   angular-build:
     runs-on: ubuntu-latest
     needs: [test, get-context]
-    if: fromJSON(needs.get-context.outputs.outputs).angular == true
+    if: fromJSON(needs.get-context.outputs.context).angular == true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
