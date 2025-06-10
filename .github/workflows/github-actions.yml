@@ -93,7 +93,7 @@ jobs:
           else
             echo "result={}" >> $GITHUB_OUTPUT
           fi
-          echo "Context: ${content}
+          echo "Context: ${content}"
 
   
   test:
