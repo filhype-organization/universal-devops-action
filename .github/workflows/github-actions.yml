@@ -70,14 +70,24 @@ jobs:
   get-context:
     runs-on: ubuntu-latest    
     outputs:
-      outputs: ${{ steps.project-type.outputs.outputs }}
+      outputs: ${{ steps.project-type.outputs.result }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Get Context
         id: project-type
         uses: filhype-organization/universal-devops-action/.github/actions/get-context@test
+      
+      - name: Set Output
+        id: set-output
+        shell: bash
+        run: |
+          if [ -f "context.json" ]; then
+            echo "result=$(cat context.json)" >> $GITHUB_OUTPUT
+          else
+            echo "result={}" >> $GITHUB_OUTPUT
+          fi
 
   
   test:
@@ -87,10 +97,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: echo context
+      - name: Display Context
+        shell: bash
         run: |
-          CONTEXT='${{ needs.get-context.outputs.outputs }}'
-          echo "Context: $CONTEXT"
+          echo "Context: ${{ needs.get-context.outputs.outputs }}"
 
       - name: Run Java Tests
         if: fromJSON(needs.get-context.outputs.outputs).java
