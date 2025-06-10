@@ -87,6 +87,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: echo context
+        run: |
+          CONTEXT='${{ needs.get-context.outputs.outputs }}'
+          echo "Context: $CONTEXT"
+
       - name: Run Java Tests
         if: fromJSON(needs.get-context.outputs.outputs).java
         uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@test
