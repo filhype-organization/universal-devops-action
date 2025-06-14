@@ -32,21 +32,19 @@ runs:
         IGNORE_GITIGNORED_FILES: true
         # Permettre l'exécution sur n'importe quelle branche
         RUN_LOCAL: false
-        # Configuration des linters
-        VALIDATE_YAML: true
-        VALIDATE_JSON: true
-        VALIDATE_XML: true
-        VALIDATE_MARKDOWN: true
-        VALIDATE_BASH: true
-        VALIDATE_DOCKERFILE: true
-        VALIDATE_JAVASCRIPT_ES: true
-        VALIDATE_TYPESCRIPT_ES: true
-        VALIDATE_CSS: true
-        VALIDATE_HTML: true
-        VALIDATE_JAVA: true
-        # Désactiver certains linters qui peuvent être problématiques
+        # Désactiver seulement les linters problématiques (approche exclusive)
         VALIDATE_JSCPD: false
         VALIDATE_NATURAL_LANGUAGE: false
+        VALIDATE_CHECKOV: false
+        VALIDATE_GITLEAKS: false
+        VALIDATE_TEKTON: false
+        VALIDATE_KUBERNETES_KUBECONFORM: false
+        VALIDATE_ANSIBLE: false
+        VALIDATE_ARM: false
+        VALIDATE_CLOUDFORMATION: false
+        VALIDATE_TERRAFORM_TFLINT: false
+        VALIDATE_TERRAFORM_TERRASCAN: false
+        VALIDATE_TERRAFORM_PLAN: false
         # Format de sortie
         OUTPUT_FORMAT: tap
         OUTPUT_FOLDER: super-linter-output

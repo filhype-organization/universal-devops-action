@@ -57,6 +57,16 @@ on:
         description: 'Docker image name (required for container builds)'
         required: false
         type: string
+      enable_java_build:
+        description: 'Enable Java build job'
+        required: false
+        type: boolean
+        default: true
+      enable_angular_build:
+        description: 'Enable Angular build job'
+        required: false
+        type: boolean
+        default: true
     secrets:
       GH_TOKEN:
         description: 'GitHub token for authentication'
@@ -117,10 +127,11 @@ jobs:
         with:
           build_options: ${{ inputs.build_options }}
           node_version: ${{ inputs.node_version }}
+          
   java-build:
     runs-on: ubuntu-latest
     needs: [test, get-context]
-    if: needs.get-context.outputs.java == 'true'
+    if: needs.get-context.outputs.java == 'true' && inputs.enable_java_build
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -135,10 +146,11 @@ jobs:
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
           is_quarkus: ${{ needs.get-context.outputs.quarkus }}
+          
   angular-build:
     runs-on: ubuntu-latest
     needs: [test, get-context]
-    if: needs.get-context.outputs.angular == 'true'
+    if: needs.get-context.outputs.angular == 'true' && inputs.enable_angular_build
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -152,10 +164,11 @@ jobs:
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
+          
   lint:
     runs-on: ubuntu-latest
     needs: [get-context, java-build, angular-build]
-    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success')
+    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
     continue-on-error: true
     steps:
       - name: Checkout code
@@ -166,10 +179,11 @@ jobs:
           sql_lint_path: ${{ inputs.sql_lint_path }}
           sql_lint_config: ${{ inputs.sql_lint_config }}
           github_token: ${{ secrets.GH_TOKEN }}
+          
   security:
     runs-on: ubuntu-latest
     needs: [get-context, java-build, angular-build]
-    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success')
+    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
