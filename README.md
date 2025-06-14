@@ -381,8 +381,10 @@ with:
 
 #### Lint and Quality Issues
 - **Super-linter fails**: Check file encoding and syntax
+- **Super-linter branch errors**: The workflow is configured to work on all branches automatically
 - **SQL lint errors**: Verify `.sqlfluff` configuration and SQL file paths
 - **Too many lint errors**: Linting is non-blocking and won't fail the pipeline
+- **FATAL branch errors**: Super-linter configuration now handles missing default branch automatically
 
 ### Debug Information
 
