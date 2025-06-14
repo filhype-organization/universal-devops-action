@@ -166,7 +166,6 @@ jobs:
           sql_lint_path: ${{ inputs.sql_lint_path }}
           sql_lint_config: ${{ inputs.sql_lint_config }}
           github_token: ${{ secrets.GH_TOKEN }}
-
   security:
     runs-on: ubuntu-latest
     needs: [get-context, java-build, angular-build]
@@ -174,10 +173,44 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run Security Checks
-        uses: filhype-organization/universal-devops-action/.github/actions/security@test
+        
+      - name: Run TruffleHog Secret Scanning
+        uses: filhype-organization/universal-devops-action/.github/actions/security/trufflehog@test
         with:
           trufflehog_args: ${{ inputs.trufflehog_args }}
+          
+      - name: Run Trivy Vulnerability Scanning
+        uses: filhype-organization/universal-devops-action/.github/actions/security/trivy@test
+        with:
+          severity: 'CRITICAL,HIGH'
+          upload_sarif: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Security Scan Summary
+        shell: bash
+        run: |
+          echo "🛡️ Security scanning completed!"
+          echo "✅ TruffleHog secret detection: Done"
+          echo "✅ Trivy vulnerability analysis: Done"
+          echo ""
+          echo "📊 Check the following for results:"
+          echo "  - GitHub Security tab for Trivy SARIF results"
+          echo "  - Job logs for TruffleHog secret detection"
+          echo "  - Any failed steps indicate security issues to address"
+
+  analysis:
+    runs-on: ubuntu-latest
+    needs: [get-context]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Renovate Configuration
+        uses: filhype-organization/universal-devops-action/.github/actions/analysis/renovate@test
+        with:
+          renovate_schedule: 'before 6am on monday'
+          auto_merge_patch: 'true'
+          auto_merge_dev_deps: 'true'
 
 
 

@@ -25,6 +25,32 @@ runs:
       uses: super-linter/super-linter@v7.4.0
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
+        # Configuration pour fonctionner sur toutes les branches
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        VALIDATE_ALL_CODEBASE: true
+        # Désactiver la vérification de la branche principale
+        IGNORE_GITIGNORED_FILES: true
+        # Permettre l'exécution sur n'importe quelle branche
+        RUN_LOCAL: false
+        # Configuration des linters
+        VALIDATE_YAML: true
+        VALIDATE_JSON: true
+        VALIDATE_XML: true
+        VALIDATE_MARKDOWN: true
+        VALIDATE_BASH: true
+        VALIDATE_DOCKERFILE: true
+        VALIDATE_JAVASCRIPT_ES: true
+        VALIDATE_TYPESCRIPT_ES: true
+        VALIDATE_CSS: true
+        VALIDATE_HTML: true
+        VALIDATE_JAVA: true
+        # Désactiver certains linters qui peuvent être problématiques
+        VALIDATE_JSCPD: false
+        VALIDATE_NATURAL_LANGUAGE: false
+        # Format de sortie
+        OUTPUT_FORMAT: tap
+        OUTPUT_FOLDER: super-linter-output
+        OUTPUT_DETAILS: detailed
 
     - name: Run Codacy Analysis CLI
       uses: codacy/codacy-analysis-cli-action@master

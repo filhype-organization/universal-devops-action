@@ -1,0 +1,26 @@
+name: TruffleHog Secret Scanning
+description: 'Run TruffleHog for secret detection'
+
+inputs:
+  trufflehog_args:
+    description: 'Additional arguments for TruffleHog'
+    required: false
+    default: '--results=verified,unknown'
+
+runs:
+  using: composite
+  steps:
+    - name: Secret Scanning with TruffleHog
+      uses: trufflesecurity/trufflehog@main
+      with:
+        extra_args: ${{ inputs.trufflehog_args }}
+
+    - name: TruffleHog Results Summary
+      shell: bash
+      run: |
+        echo "🔍 TruffleHog secret scanning completed"
+        echo "📊 Check the logs above for any detected secrets"
+        echo "⚠️ If secrets are found, please:"
+        echo "  1. Remove or rotate the secrets"
+        echo "  2. Update your .gitignore or .gitleaks.toml"
+        echo "  3. Consider using environment variables or secret management"

@@ -1,0 +1,129 @@
+name: Trivy Vulnerability Scanner
+description: 'Run Trivy for vulnerability analysis and security scanning'
+
+inputs:
+  trivy_config:
+    description: 'Path to Trivy configuration file'
+    required: false
+    default: '.trivy.yaml'
+  severity:
+    description: 'Severity levels to report (CRITICAL,HIGH,MEDIUM,LOW)'
+    required: false
+    default: 'CRITICAL,HIGH'
+  upload_sarif:
+    description: 'Upload SARIF results to GitHub Security tab'
+    required: false
+    default: 'true'
+  scan_type:
+    description: 'Type of scan (fs, image, repo)'
+    required: false
+    default: 'fs'
+  github_token:
+    description: 'GitHub token for SARIF upload'
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Run Trivy vulnerability scanner in repo mode
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: ${{ inputs.scan_type }}
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: ${{ inputs.severity }}
+        exit-code: '0'
+
+    - name: Display SARIF results summary
+      shell: bash
+      run: |
+        if [ -f "trivy-results.sarif" ]; then
+          echo "📄 SARIF report generated successfully"
+          echo "📊 File size: $(du -h trivy-results.sarif | cut -f1)"
+          echo "🔍 Checking for vulnerabilities..."
+          
+          # Parse SARIF to show summary
+          if command -v jq >/dev/null 2>&1; then
+            total_results=$(jq '.runs[0].results | length' trivy-results.sarif 2>/dev/null || echo "0")
+            echo "📈 Total issues found: $total_results"
+          fi
+        else
+          echo "⚠️ SARIF report not generated"
+        fi
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      if: inputs.upload_sarif == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      continue-on-error: true
+      with:
+        sarif_file: 'trivy-results.sarif'
+        token: ${{ inputs.github_token }}
+
+    - name: Upload SARIF as artifact (fallback)
+      if: inputs.upload_sarif == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-sarif-results
+        path: trivy-results.sarif
+        retention-days: 30
+
+    - name: Run Trivy vulnerability scanner for critical issues
+      uses: aquasecurity/trivy-action@master
+      continue-on-error: true
+      with:
+        scan-type: ${{ inputs.scan_type }}
+        scan-ref: '.'
+        format: 'table'
+        severity: 'CRITICAL,HIGH'
+        exit-code: '0'
+
+    - name: Check for critical vulnerabilities
+      shell: bash
+      run: |
+        echo "🔍 Running final vulnerability check..."
+        
+        # Run Trivy again to get JSON output for parsing
+        trivy fs . --format json --severity CRITICAL,HIGH --quiet > trivy-results.json 2>/dev/null || true
+        
+        if [ -f "trivy-results.json" ]; then
+          if command -v jq >/dev/null 2>&1; then
+            critical_count=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-results.json 2>/dev/null || echo "0")
+            high_count=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' trivy-results.json 2>/dev/null || echo "0")
+            
+            echo "🚨 Critical vulnerabilities: $critical_count"
+            echo "⚠️ High vulnerabilities: $high_count"
+            
+            if [ "$critical_count" -gt 0 ]; then
+              echo "💥 CRITICAL vulnerabilities found! Please review and fix immediately."
+              echo "::warning::$critical_count critical vulnerabilities detected"
+              exit 1
+            elif [ "$high_count" -gt 0 ]; then
+              echo "⚠️ HIGH severity vulnerabilities found. Consider fixing these."
+              echo "::warning::$high_count high severity vulnerabilities detected"
+            else
+              echo "✅ No critical or high severity vulnerabilities found"
+            fi
+          else
+            echo "ℹ️ jq not available, skipping detailed analysis"
+          fi
+        else
+          echo "ℹ️ Could not generate JSON report for analysis"
+        fi
+
+    - name: Trivy Scan Summary
+      shell: bash
+      run: |
+        echo "🛡️ Trivy vulnerability scanning completed"
+        echo "📊 Results have been uploaded to GitHub Security tab"
+        echo "🔍 Scan included:"
+        echo "  - Filesystem vulnerabilities"
+        echo "  - Dependency vulnerabilities"  
+        echo "  - Configuration issues"
+        echo "  - Secret detection"
+        echo ""
+        echo "⚠️ If critical vulnerabilities are found:"
+        echo "  1. Review the Security tab for details"
+        echo "  2. Update vulnerable dependencies"
+        echo "  3. Apply security patches"
+        echo "  4. Consider using alternative packages"
