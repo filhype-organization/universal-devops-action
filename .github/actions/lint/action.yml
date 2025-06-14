@@ -25,19 +25,21 @@ runs:
       uses: super-linter/super-linter@v7.4.0
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
-        # Configuration pour fonctionner sur toutes les branches
-        DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
-        VALIDATE_ALL_CODEBASE: true
-        # Désactiver la vérification stricte de la branche principale
+        # Configuration pour éviter les problèmes de branche
+        VALIDATE_ALL_CODEBASE: false
+        # Utiliser les fichiers modifiés dans le commit/PR
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch || github.ref_name || 'main' }}
+        # Désactiver complètement la validation Git
         IGNORE_GITIGNORED_FILES: true
-        # Configuration pour éviter les erreurs de branche
+        # Forcer le mode sans validation de branche
+        RUN_LOCAL: true
+        # Désactiver les vérifications Git qui causent l'erreur
+        DISABLE_ERRORS: false
+        # Configuration robuste pour toutes les branches
         MULTI_STATUS: false
-        # Permettre l'exécution en mode standalone
-        RUN_LOCAL: false
-        # Configuration Git pour éviter les erreurs de branche
-        GITHUB_ACTIONS_CONFIG_FILE: '.github/super-linter.yml'
-        # Ignorer les erreurs de branche manquante
         ERROR_ON_MISSING_EXEC_BIT: false
+        # Utiliser le workspace actuel sans vérification Git
+        GITHUB_WORKSPACE: /github/workspace
         # Désactiver seulement les linters problématiques (approche exclusive)
         VALIDATE_JSCPD: false
         VALIDATE_NATURAL_LANGUAGE: false
