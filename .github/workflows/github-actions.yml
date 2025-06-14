@@ -70,7 +70,13 @@ jobs:
   get-context:
     runs-on: ubuntu-latest    
     outputs:
-      context: ${{ steps.set-output.outputs.result }}
+      java: ${{ steps.project-type.outputs.java }}
+      pom: ${{ steps.project-type.outputs.pom }}
+      gradle: ${{ steps.project-type.outputs.gradle }}
+      angular: ${{ steps.project-type.outputs.angular }}
+      spring: ${{ steps.project-type.outputs.spring }}
+      quarkus: ${{ steps.project-type.outputs.quarkus }}
+      outputs: ${{ steps.project-type.outputs.outputs }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -78,21 +84,6 @@ jobs:
       - name: Get Context
         id: project-type
         uses: filhype-organization/universal-devops-action/.github/actions/get-context@test
-      
-      # - name: Set Output
-      #   id: set-output
-      #   shell: bash
-      #   run: |
-      #     if [ -f "context.json" ]; then
-      #       content=$(cat context.json)
-      #       # Escape content for GitHub Actions
-      #       content="${content//'%'/'%25'}"
-      #       content="${content//$'\n'/'%0A'}"
-      #       content="${content//$'\r'/'%0D'}"
-      #       echo "result=${content}" >> $GITHUB_OUTPUT
-      #     else
-      #       echo "result={}" >> $GITHUB_OUTPUT
-      #     fi
   
   test:
     runs-on: ubuntu-latest
@@ -100,22 +91,28 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+        
       - name: Display Context
         shell: bash
         run: |
-          echo "Context: ${{ needs.get-context.outputs.context }}"
+          echo "Java: ${{ needs.get-context.outputs.java }}"
+          echo "Maven: ${{ needs.get-context.outputs.pom }}"
+          echo "Gradle: ${{ needs.get-context.outputs.gradle }}"
+          echo "Angular: ${{ needs.get-context.outputs.angular }}"
+          echo "Spring: ${{ needs.get-context.outputs.spring }}"
+          echo "Quarkus: ${{ needs.get-context.outputs.quarkus }}"
+          echo "Full outputs: ${{ needs.get-context.outputs.outputs }}"
 
       - name: Run Java Tests
-        if: fromJSON(needs.get-context.outputs.context).java
+        if: needs.get-context.outputs.java == 'true'
         uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@test
         with:
           test_options: ${{ inputs.test_options }}
           java_version: ${{ inputs.java_version }}
-          project_type: ${{ (fromJSON(needs.get-context.outputs.context).pom && 'maven') || 'gradle' }}
+          project_type: ${{ (needs.get-context.outputs.pom == 'true' && 'maven') || 'gradle' }}
 
       - name: Run Angular Tests
-        if: fromJSON(needs.get-context.outputs.context).angular
+        if: needs.get-context.outputs.angular == 'true'
         uses: filhype-organization/universal-devops-action/.github/actions/test/angular-test@test
         with:
           build_options: ${{ inputs.build_options }}
@@ -123,7 +120,7 @@ jobs:
   java-build:
     runs-on: ubuntu-latest
     needs: [test, get-context]
-    if: fromJSON(needs.get-context.outputs.context).java == true
+    if: needs.get-context.outputs.java == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -137,11 +134,11 @@ jobs:
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
-          is_quarkus: ${{ fromJSON(needs.get-context.outputs.context).quarkus }}
+          is_quarkus: ${{ needs.get-context.outputs.quarkus }}
   angular-build:
     runs-on: ubuntu-latest
     needs: [test, get-context]
-    if: fromJSON(needs.get-context.outputs.context).angular == true
+    if: needs.get-context.outputs.angular == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
