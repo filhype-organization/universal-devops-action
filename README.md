@@ -26,7 +26,7 @@ A reusable GitHub Actions workflow that provides a complete CI/CD pipeline with 
   - Angular unit tests
   - Configurable test options
 - 📊 **Quality Checks**
-  - Code linting with Super-linter (non-blocking)
+  - Code linting with MegaLinter (non-blocking)
   - SQL linting with SQLFluff
   - Security scanning with TruffleHog and Trivy
   - Vulnerability scanning with SARIF upload
@@ -134,7 +134,7 @@ For Java projects, it also detects the framework:
    - Outputs individual flags for each detected technology
 
 2. **lint** (Always runs, non-blocking)
-   - Runs various code quality checks using Super-linter
+   - Runs various code quality checks using MegaLinter
    - SQL linting if SQL files are present
    - Continues pipeline even if checks fail
    - Runs independently of build status
@@ -323,13 +323,31 @@ vulnerability:
 ignorefile: .trivyignore
 ```
 
-### Custom Super-linter Configuration
+### Custom MegaLinter Configuration
 
-The workflow automatically excludes problematic linters. To further customize, you can:
+Create a `.mega-linter.yml` file in your repository root:
 
-1. Create a `.github/super-linter.env` file
-2. Add custom linter configurations in your repository
-3. Use the `VALIDATE_<LANGUAGE>` environment variables
+```yaml
+# Enable/disable specific linters
+ENABLE_LINTERS:
+  - YAML_YAMLLINT
+  - JSON_JSONLINT
+  - JAVASCRIPT_ES
+  - TYPESCRIPT_ES
+  - PYTHON_FLAKE8
+
+# Disable problematic linters
+DISABLE_LINTERS:
+  - COPYPASTE_JSCPD
+  - SPELL_CSPELL
+
+# File patterns to exclude
+FILTER_REGEX_EXCLUDE: '(node_modules/|\.git/|dist/)'
+
+# Output configuration
+SHOW_ELAPSED_TIME: true
+FILEIO_REPORTER: false
+```
 
 ### Build Control Strategies
 
@@ -380,11 +398,11 @@ with:
 - **Image name invalid**: Use format `registry/organization/repository`
 
 #### Lint and Quality Issues
-- **Super-linter fails**: Check file encoding and syntax
-- **Super-linter branch errors**: The workflow is configured to work on all branches automatically
+- **MegaLinter fails**: Check file encoding and syntax
+- **MegaLinter configuration**: Create `.mega-linter.yml` for custom settings
 - **SQL lint errors**: Verify `.sqlfluff` configuration and SQL file paths
 - **Too many lint errors**: Linting is non-blocking and won't fail the pipeline
-- **FATAL branch errors**: Super-linter configuration now handles missing default branch automatically
+- **Language-specific issues**: MegaLinter supports 70+ languages with auto-detection
 
 ### Debug Information
 
@@ -426,10 +444,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Changelog
 
 ### Latest Updates
+- ✅ **Replaced Super-linter with MegaLinter** for better stability and performance
+- ✅ **Resolved branch detection issues** with modern linter that works on all branches
 - ✅ Added build control parameters (`enable_java_build`, `enable_angular_build`)
 - ✅ Separated security actions into modular components (TruffleHog, Trivy, Renovate)
 - ✅ Improved project detection with individual output flags
 - ✅ Enhanced SARIF upload with fallback to artifacts
-- ✅ Fixed Super-linter configuration conflicts
 - ✅ Added comprehensive debug logging
 - ✅ Ensured lint and security jobs run independently of build status
