@@ -28,23 +28,23 @@ runs:
       detect_frameworks() {
         local file=$1
         if grep -q "org.springframework.boot" "$file"; then
-          outputs=$(echo "$outputs" | jq '.spring = true')
+          outputs=$(echo "$outputs" | jq '. + {"spring": true}')
         fi
         if grep -q "io.quarkus" "$file"; then
-          outputs=$(echo "$outputs" | jq '.quarkus = true')
+          outputs=$(echo "$outputs" | jq '. + {"quarkus": true}')
         fi
       }
 
       # Détection principale
       if [ -f "pom.xml" ]; then
-        outputs=$(echo "$outputs" | jq '.java = true | .pom = true')
+        outputs=$(echo "$outputs" | jq '. + {"java": true, "pom": true}')
         detect_frameworks "pom.xml"
       elif [ -f "build.gradle" ]; then
-        outputs=$(echo "$outputs" | jq '.java = true | .gradle = true')
+        outputs=$(echo "$outputs" | jq '. + {"java": true, "gradle": true}')
         detect_frameworks "build.gradle"
       elif [ -f "angular.json" ]; then
-        outputs=$(echo "$outputs" | jq '.angular = true')
+        outputs=$(echo "$outputs" | jq '. + {"angular": true}')
       fi
 
       # Export final en une seule commande
-      echo "outputs=$(echo "$outputs" | jq -c '.')" >> $GITHUB_OUTPUT
+      echo "outputs=$outputs" >> $GITHUB_OUTPUT
