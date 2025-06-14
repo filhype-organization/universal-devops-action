@@ -38,6 +38,10 @@ runs:
       run: |
         cd ${{ inputs.working-directory }}
         
+        echo "🔍 Analyzing project in directory: $(pwd)"
+        echo "📁 Directory contents:"
+        ls -la
+        
         # Initialize individual outputs
         echo "java=false" >> $GITHUB_OUTPUT
         echo "pom=false" >> $GITHUB_OUTPUT
@@ -52,11 +56,14 @@ runs:
         # Fonction de détection
         detect_frameworks() {
           local file=$1
+          echo "🔍 Analyzing $file for frameworks..."
           if grep -q "org.springframework.boot" "$file"; then
+            echo "✅ Spring Boot detected in $file"
             outputs=$(echo "$outputs" | jq '. + {"spring": true}')
             echo "spring=true" >> $GITHUB_OUTPUT
           fi
           if grep -q "io.quarkus" "$file"; then
+            echo "✅ Quarkus detected in $file"
             outputs=$(echo "$outputs" | jq '. + {"quarkus": true}')
             echo "quarkus=true" >> $GITHUB_OUTPUT
           fi
@@ -64,20 +71,30 @@ runs:
 
         # Détection principale
         if [ -f "pom.xml" ]; then
+          echo "✅ Maven project detected (pom.xml found)"
           outputs=$(echo "$outputs" | jq '. + {"java": true, "pom": true}')
           echo "java=true" >> $GITHUB_OUTPUT
           echo "pom=true" >> $GITHUB_OUTPUT
           detect_frameworks "pom.xml"
-        elif [ -f "build.gradle" ]; then
+        elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+          echo "✅ Gradle project detected (build.gradle found)"
           outputs=$(echo "$outputs" | jq '. + {"java": true, "gradle": true}')
           echo "java=true" >> $GITHUB_OUTPUT
           echo "gradle=true" >> $GITHUB_OUTPUT
-          detect_frameworks "build.gradle"
+          if [ -f "build.gradle" ]; then
+            detect_frameworks "build.gradle"
+          else
+            detect_frameworks "build.gradle.kts"
+          fi
         elif [ -f "angular.json" ]; then
+          echo "✅ Angular project detected (angular.json found)"
           outputs=$(echo "$outputs" | jq '. + {"angular": true}')
           echo "angular=true" >> $GITHUB_OUTPUT
+        else
+          echo "ℹ️ No specific project type detected"
         fi
 
         # Export final en une seule commande
         outputs=$(echo "$outputs" | jq -c '.')
         echo "outputs=$outputs" >> $GITHUB_OUTPUT
+        echo "🎯 Final detection results: $outputs"
