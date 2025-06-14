@@ -1,0 +1,53 @@
+# Trivy configuration file
+# See https://aquasecurity.github.io/trivy/latest/docs/references/configuration/config-file/
+
+# Severity levels to include in the scan
+severity:
+  - CRITICAL
+  - HIGH
+  - MEDIUM
+
+# Skip files and directories
+skip-files:
+  - "**/*.min.js"
+  - "**/node_modules/**"
+  - "**/target/**"
+  - "**/build/**"
+  - "**/.git/**"
+  - "**/vendor/**"
+
+# Skip specific vulnerability IDs
+skip-dirs:
+  - ".git"
+  - "node_modules"
+  - "target"
+  - "build"
+  - ".mvn"
+
+# Scanning options
+scan:
+  # Skip scanning of licenses
+  skip-policy-update: false
+  
+# Database options
+db:
+  # Skip database update
+  skip-update: false
+
+# Output format options
+format: table
+
+# Exit code when vulnerabilities are found
+exit-code: 1
+
+# Timeout for the scan
+timeout: "10m"
+
+# Security checks to include
+security-checks:
+  - vuln
+  - secret
+  - config
+
+# Include dev dependencies in scan (for npm/yarn)
+include-dev-deps: true

@@ -1,16 +1,175 @@
 name: Security Checks
-description: 'Run security scans and secret detection'
+description: 'Run security scans, vulnerability analysis and dependency checks'
 
 inputs:
   trufflehog_args:
     description: 'Additional arguments for TruffleHog'
     required: false
     default: '--results=verified,unknown'
+  trivy_config:
+    description: 'Path to Trivy configuration file'
+    required: false
+    default: '.trivy.yaml'
+  severity:
+    description: 'Severity levels to report (CRITICAL,HIGH,MEDIUM,LOW)'
+    required: false
+    default: 'CRITICAL,HIGH'
+  upload_sarif:
+    description: 'Upload SARIF results to GitHub Security tab'
+    required: false
+    default: 'true'
 
 runs:
   using: composite
   steps:
-    - name: Secret Scanning
+    - name: Secret Scanning with TruffleHog
       uses: trufflesecurity/trufflehog@main
       with:
         extra_args: ${{ inputs.trufflehog_args }}
+
+    - name: Run Trivy vulnerability scanner in repo mode
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: ${{ inputs.severity }}
+        exit-code: '0'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      if: inputs.upload_sarif == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Run Trivy vulnerability scanner for critical issues
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'table'
+        severity: 'CRITICAL,HIGH'
+        exit-code: '1'
+
+    - name: Setup Renovate Configuration
+      shell: bash
+      run: |
+        echo "🔧 Setting up Renovate configuration for dependency management..."
+        
+        # Create renovate.json if it doesn't exist
+        if [ ! -f "renovate.json" ]; then
+          echo "📝 Creating renovate.json configuration..."
+          cat > renovate.json << 'EOF'
+        {
+          "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+          "extends": [
+            "config:recommended",
+            ":dependencyDashboard",
+            ":semanticCommits",
+            ":automergeDigest",
+            ":automergeMinor"
+          ],
+          "schedule": ["before 6am on monday"],
+          "labels": ["dependencies"],
+          "assignees": ["@me"],
+          "reviewers": ["@me"],
+          "packageRules": [
+            {
+              "matchDepTypes": ["devDependencies"],
+              "automerge": true
+            },
+            {
+              "matchUpdateTypes": ["patch"],
+              "automerge": true
+            }
+          ],
+          "vulnerabilityAlerts": {
+            "enabled": true,
+            "schedule": ["at any time"]
+          }
+        }
+        EOF
+          echo "✅ renovate.json created successfully"
+        else
+          echo "ℹ️ renovate.json already exists"
+        fi
+        
+        # Create .github/renovate.json5 for more advanced configuration
+        mkdir -p .github
+        if [ ! -f ".github/renovate.json5" ]; then
+          echo "📝 Creating advanced Renovate configuration..."
+          cat > .github/renovate.json5 << 'EOF'
+        {
+          // Advanced Renovate configuration
+          "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+          "extends": [
+            "config:recommended",
+            ":dependencyDashboard",
+            ":semanticCommits",
+            "group:monorepos",
+            "group:recommended",
+            "workarounds:all"
+          ],
+          "schedule": ["before 6am on monday"],
+          "timezone": "Europe/Paris",
+          "labels": ["type: dependencies"],
+          "assignees": ["@me"],
+          "reviewers": ["@me"],
+          "prConcurrentLimit": 5,
+          "prHourlyLimit": 2,
+          "commitMessagePrefix": "chore(deps):",
+          "semanticCommits": "enabled",
+          "packageRules": [
+            {
+              "description": "Auto-merge dev dependencies",
+              "matchDepTypes": ["devDependencies"],
+              "automerge": true,
+              "automergeType": "pr"
+            },
+            {
+              "description": "Auto-merge patch updates",
+              "matchUpdateTypes": ["patch"],
+              "automerge": true,
+              "automergeType": "pr"
+            },
+            {
+              "description": "Group Java dependencies",
+              "matchLanguages": ["java"],
+              "groupName": "Java dependencies"
+            },
+            {
+              "description": "Group Angular dependencies",
+              "matchPackagePatterns": ["^@angular/"],
+              "groupName": "Angular dependencies"
+            },
+            {
+              "description": "Group security updates",
+              "matchDepTypes": ["dependencies"],
+              "matchCurrentVersion": "!/^0\\./",
+              "groupName": "Security updates",
+              "schedule": ["at any time"]
+            }
+          ],
+          "vulnerabilityAlerts": {
+            "enabled": true,
+            "schedule": ["at any time"],
+            "labels": ["security", "vulnerability"]
+          },
+          "osvVulnerabilityAlerts": true,
+          "dependencyDashboard": true,
+          "dependencyDashboardTitle": "🔄 Dependency Dashboard",
+          "dependencyDashboardHeader": "This issue lists Renovate updates and detected dependencies. Read the [Dependency Dashboard](https://docs.renovatebot.com/key-concepts/dashboard/) docs to learn more."
+        }
+        EOF
+          echo "✅ Advanced Renovate configuration created"
+        else
+          echo "ℹ️ Advanced Renovate configuration already exists"
+        fi
+        
+        echo "🎯 Renovate setup completed. Your project is now configured for automated dependency management!"
+        echo "📋 Next steps:"
+        echo "  1. Install Renovate app on your GitHub repository"
+        echo "  2. Renovate will create a dependency dashboard issue"
+        echo "  3. Review and merge the onboarding PR"
+        echo "  4. Enjoy automated dependency updates!"
