@@ -225,15 +225,10 @@ jobs:
           echo "📊 Check the following for results:"
           echo "  - GitHub Security tab for Trivy SARIF results"
           echo "  - Job logs for TruffleHog secret detection"          echo "  - Any failed steps indicate security issues to address"
-
   mkdocs-build:
     runs-on: ubuntu-latest
     needs: [get-context]
     if: needs.get-context.outputs.mkdocs == 'true' && inputs.enable_mkdocs_build == true
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
