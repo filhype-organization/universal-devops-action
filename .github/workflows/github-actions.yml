@@ -32,7 +32,6 @@ on:
         description: 'Target platform for container builds (arm64 or x86)'
         required: false
         type: string
-        default: 'x86'
       container_build:
         description: 'Whether to build and push container image for Angular'
         required: false
@@ -67,6 +66,21 @@ on:
         required: false
         type: boolean
         default: true
+      enable_mkdocs_build:
+        description: 'Enable MkDocs build and deploy job'
+        required: false
+        type: boolean
+        default: true
+      python_version:
+        description: 'Python version for MkDocs'
+        required: false
+        type: string
+        default: '3.x'
+      mkdocs_requirements:
+        description: 'MkDocs requirements (space-separated packages)'
+        required: false
+        type: string
+        default: 'mkdocs-material'
     secrets:
       GH_TOKEN:
         description: 'GitHub token for authentication'
@@ -78,7 +92,7 @@ on:
 
 jobs:
   get-context:
-    runs-on: ubuntu-latest    
+    runs-on: ubuntu-latest
     outputs:
       java: ${{ steps.project-type.outputs.java }}
       pom: ${{ steps.project-type.outputs.pom }}
@@ -86,6 +100,7 @@ jobs:
       angular: ${{ steps.project-type.outputs.angular }}
       spring: ${{ steps.project-type.outputs.spring }}
       quarkus: ${{ steps.project-type.outputs.quarkus }}
+      mkdocs: ${{ steps.project-type.outputs.mkdocs }}
       outputs: ${{ steps.project-type.outputs.outputs }}
     steps:
       - name: Checkout code
@@ -209,8 +224,38 @@ jobs:
           echo ""
           echo "📊 Check the following for results:"
           echo "  - GitHub Security tab for Trivy SARIF results"
-          echo "  - Job logs for TruffleHog secret detection"
-          echo "  - Any failed steps indicate security issues to address"
+          echo "  - Job logs for TruffleHog secret detection"          echo "  - Any failed steps indicate security issues to address"
+
+  mkdocs-build:
+    runs-on: ubuntu-latest
+    needs: [get-context]
+    if: needs.get-context.outputs.mkdocs == 'true' && inputs.enable_mkdocs_build == true
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build and Deploy MkDocs
+        uses: filhype-organization/universal-devops-action/.github/actions/mkdocs-build@test
+        with:
+          python_version: ${{ inputs.python_version }}
+          mkdocs_requirements: ${{ inputs.mkdocs_requirements }}
+          deploy: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: MkDocs Build Summary
+        shell: bash
+        run: |
+          echo "📚 MkDocs documentation build completed!"
+          echo "🚀 Documentation deployed to GitHub Pages"
+          echo ""
+          echo "📖 Your documentation is available at:"
+          echo "  https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
 
   analysis:
     runs-on: ubuntu-latest

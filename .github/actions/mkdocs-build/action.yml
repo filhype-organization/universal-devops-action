@@ -1,0 +1,92 @@
+name: MkDocs Build and Deploy
+description: 'Build and deploy MkDocs documentation to GitHub Pages'
+
+inputs:
+  python_version:
+    description: 'Python version to use'
+    required: false
+    default: '3.x'
+  mkdocs_requirements:
+    description: 'MkDocs requirements (space-separated packages)'
+    required: false
+    default: 'mkdocs-material'
+  deploy:
+    description: 'Whether to deploy to GitHub Pages'
+    required: false
+    default: 'true'
+  github_token:
+    description: 'GitHub token for deployment'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python_version }}
+
+    - name: Setup cache for MkDocs
+      shell: bash
+      run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
+
+    - name: Cache MkDocs materials
+      uses: actions/cache@v4
+      with:
+        key: mkdocs-material-${{ env.cache_id }}
+        path: .cache
+        restore-keys: |
+          mkdocs-material-
+
+    - name: Install MkDocs and dependencies
+      shell: bash
+      run: |
+        echo "📦 Installing MkDocs and dependencies..."
+        
+        # Install base requirements
+        pip install ${{ inputs.mkdocs_requirements }}
+        
+        # Install from requirements.txt if it exists
+        if [ -f "requirements.txt" ]; then
+          echo "📋 Installing from requirements.txt"
+          pip install -r requirements.txt
+        fi
+        
+        # Install common MkDocs plugins
+        pip install mkdocs-swagger-ui-tag mkdocs-mermaid2-plugin mkdocs-git-revision-date-localized-plugin
+        
+        echo "✅ MkDocs installation complete"
+        mkdocs --version
+
+    - name: Build MkDocs
+      shell: bash
+      run: |
+        echo "🏗️ Building MkDocs documentation..."
+        mkdocs build --verbose
+        echo "✅ MkDocs build complete"
+
+    - name: Configure Git for deployment
+      if: inputs.deploy == 'true'
+      shell: bash
+      run: |
+        echo "⚙️ Configuring Git for deployment..."
+        git config user.name github-actions[bot]
+        git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+    - name: Deploy to GitHub Pages
+      if: inputs.deploy == 'true'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        echo "🚀 Deploying to GitHub Pages..."
+        mkdocs gh-deploy --force --verbose
+        echo "✅ Deployment complete"
+
+    - name: Upload build artifacts
+      if: inputs.deploy != 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: mkdocs-site
+        path: site/
+        retention-days: 30

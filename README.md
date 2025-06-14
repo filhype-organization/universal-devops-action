@@ -11,10 +11,12 @@ A reusable GitHub Actions workflow that provides a complete CI/CD pipeline with 
 - 🔍 **Automatic project type detection**
   - Java (Maven/Gradle)
   - Angular
+  - MkDocs documentation sites
   - Framework detection (Spring Boot/Quarkus)
 - 🏗️ **Build Support**
   - Java builds (legacy and native compilation for Quarkus)
   - Angular builds with production optimization
+  - MkDocs documentation builds with GitHub Pages deployment
   - Multi-architecture support (x86/arm64)
   - Optional build disabling for specific project types
 - 🐳 **Container Support**
@@ -25,6 +27,7 @@ A reusable GitHub Actions workflow that provides a complete CI/CD pipeline with 
   - Java unit tests
   - Angular unit tests
   - Configurable test options
+  - MkDocs builds without pre-tests (documentation focus)
 - 📊 **Quality Checks**
   - Code linting with MegaLinter (non-blocking)
   - SQL linting with SQLFluff
@@ -101,16 +104,22 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-### Angular Project with Custom Node Version
+### MkDocs Documentation Site
 ```yaml
 jobs:
-  build:
+  docs:
     uses: filhype-organization/universal-devops-action/.github/workflows/github-actions.yml@v1
     with:
-      node_version: '20'
-      enable_java_build: false  # Skip Java builds for Angular-only projects
+      python_version: '3.x'
+      mkdocs_requirements: 'mkdocs-material mkdocs-swagger-ui-tag'
+      enable_java_build: false
+      enable_angular_build: false
     secrets:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
 ```
 
 ## Workflow Details
@@ -121,6 +130,7 @@ The workflow automatically detects your project type based on the presence of sp
 - `pom.xml` → Java with Maven
 - `build.gradle` or `build.gradle.kts` → Java with Gradle
 - `angular.json` → Angular
+- `mkdocs.yml` or `mkdocs.yaml` → MkDocs documentation
 
 For Java projects, it also detects the framework:
 - Spring Boot: Checks for `org.springframework.boot` dependency
@@ -156,7 +166,14 @@ For Java projects, it also detects the framework:
    - Builds production-optimized assets
    - Optional container image building and pushing
 
-6. **test** (Conditional)
+6. **mkdocs-build** (Conditional)
+   - Runs if MkDocs project is detected AND `enable_mkdocs_build` is true
+   - Builds documentation with Python and MkDocs
+   - Automatically deploys to GitHub Pages
+   - No pre-tests required (documentation focus)
+   - Caches dependencies for faster builds
+
+7. **test** (Conditional)
    - Runs appropriate tests based on project type
    - Only runs if corresponding build job ran successfully
    - Configurable test options
@@ -207,10 +224,25 @@ The security workflow uses separate composite actions for better modularity:
 - **Package Manager**: npm (automatically used)
 - **Build Output**: Production-optimized builds
 
+#### MkDocs Projects
+- **Python**: Automatically installed (default: Python 3.x)
+- **MkDocs**: Auto-installed with specified requirements
+- **GitHub Pages**: Automatic deployment with proper permissions
+- **Common plugins**: Pre-installed (mermaid, git-revision-date, swagger-ui)
+
 #### Container Builds
 - **Docker**: Available on GitHub-hosted runners
 - **Registry Authentication**: Optional (Docker Hub, GitHub Container Registry)
 - **Multi-arch**: Supported for both Java and Angular projects
+
+### GitHub Permissions for MkDocs
+For MkDocs projects that deploy to GitHub Pages, add these permissions:
+```yaml
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+```
 
 ### Security Scanning
 - **TruffleHog**: No additional setup required
@@ -252,13 +284,17 @@ Examples:
 | tag | Override version tag for Docker images | No | N/A |
 | **enable_java_build** | **Enable/disable Java build jobs** | **No** | **true** |
 | **enable_angular_build** | **Enable/disable Angular build jobs** | **No** | **true** |
+| **enable_mkdocs_build** | **Enable/disable MkDocs build and deploy jobs** | **No** | **true** |
+| **python_version** | **Python version for MkDocs** | **No** | **3.x** |
+| **mkdocs_requirements** | **MkDocs packages (space-separated)** | **No** | **mkdocs-material** |
 
 \* Required if container_build is true
 
-**Note:** The `enable_java_build` and `enable_angular_build` parameters allow you to disable specific build jobs while still running lint and security checks. This is useful for:
+**Note:** The `enable_java_build`, `enable_angular_build`, and `enable_mkdocs_build` parameters allow you to disable specific build jobs while still running lint and security checks. This is useful for:
 - Security-only pipelines
 - Quality checks without builds
 - Selective builds in monorepo scenarios
+- Documentation-only deployments
 
 ## Secrets
 
@@ -282,16 +318,19 @@ The `get-context` job provides detailed information about the detected project:
 | has_angular | Angular project detected | `true`, `false` |
 | has_spring | Spring Boot framework detected | `true`, `false` |
 | has_quarkus | Quarkus framework detected | `true`, `false` |
+| has_mkdocs | MkDocs documentation project detected | `true`, `false` |
 
 ### Job Execution Logic
 
-| Scenario | lint | security | java-build | angular-build | test |
-|----------|------|----------|------------|---------------|------|
-| Java project + `enable_java_build: true` | ✅ Always | ✅ Always | ✅ Runs | ❌ Skipped | ✅ If build succeeds |
-| Java project + `enable_java_build: false` | ✅ Always | ✅ Always | ❌ Disabled | ❌ Skipped | ❌ Skipped |
-| Angular project + `enable_angular_build: true` | ✅ Always | ✅ Always | ❌ Skipped | ✅ Runs | ✅ If build succeeds |
-| Angular project + `enable_angular_build: false` | ✅ Always | ✅ Always | ❌ Skipped | ❌ Disabled | ❌ Skipped |
-| No builds enabled | ✅ Always | ✅ Always | ❌ Disabled | ❌ Disabled | ❌ Skipped |
+| Scenario | lint | security | java-build | angular-build | mkdocs-build | test |
+|----------|------|----------|------------|---------------|--------------|------|
+| Java project + `enable_java_build: true` | ✅ Always | ✅ Always | ✅ Runs | ❌ Skipped | ❌ Skipped | ✅ If build succeeds |
+| Java project + `enable_java_build: false` | ✅ Always | ✅ Always | ❌ Disabled | ❌ Skipped | ❌ Skipped | ❌ Skipped |
+| Angular project + `enable_angular_build: true` | ✅ Always | ✅ Always | ❌ Skipped | ✅ Runs | ❌ Skipped | ✅ If build succeeds |
+| Angular project + `enable_angular_build: false` | ✅ Always | ✅ Always | ❌ Skipped | ❌ Disabled | ❌ Skipped | ❌ Skipped |
+| MkDocs project + `enable_mkdocs_build: true` | ✅ Always | ✅ Always | ❌ Skipped | ❌ Skipped | ✅ Runs | ❌ Skipped |
+| MkDocs project + `enable_mkdocs_build: false` | ✅ Always | ✅ Always | ❌ Skipped | ❌ Skipped | ❌ Disabled | ❌ Skipped |
+| No builds enabled | ✅ Always | ✅ Always | ❌ Disabled | ❌ Disabled | ❌ Disabled | ❌ Skipped |
 
 ### Security Report Outputs
 
@@ -325,29 +364,41 @@ ignorefile: .trivyignore
 
 ### Custom MegaLinter Configuration
 
-Create a `.mega-linter.yml` file in your repository root:
+Create a `.mega-linter.yml` file in your repository root for advanced customization:
 
 ```yaml
-# Enable/disable specific linters
-ENABLE_LINTERS:
-  - YAML_YAMLLINT
-  - JSON_JSONLINT
-  - JAVASCRIPT_ES
-  - TYPESCRIPT_ES
-  - PYTHON_FLAKE8
+# Performance optimization
+VALIDATE_ALL_CODEBASE: false
+PARALLEL_PROCESS_NUMBER: 4
+LOG_LEVEL: INFO
 
-# Disable problematic linters
+# Disable redundant linters (we have specialized security actions)
 DISABLE_LINTERS:
-  - COPYPASTE_JSCPD
-  - SPELL_CSPELL
+  - REPOSITORY_TRUFFLEHOG  # We have dedicated TruffleHog action
+  - REPOSITORY_TRIVY       # We have dedicated Trivy action
+  - REPOSITORY_GRYPE       # Redundant with Trivy
+  - REPOSITORY_DEVSKIM     # Too strict for universal pipeline
 
-# File patterns to exclude
-FILTER_REGEX_EXCLUDE: '(node_modules/|\.git/|dist/)'
+# Enable essential code quality linters
+ENABLE_LINTERS:
+  - ACTION_ACTIONLINT      # GitHub Actions
+  - YAML_YAMLLINT          # YAML validation
+  - JSON_JSONLINT          # JSON validation
+  - JAVASCRIPT_ES          # JavaScript/TypeScript
+  - PYTHON_FLAKE8          # Python code quality
+  - JAVA_CHECKSTYLE        # Java code style
+  - MARKDOWN_MARKDOWNLINT  # Documentation
+  - DOCKERFILE_HADOLINT    # Docker best practices
 
-# Output configuration
-SHOW_ELAPSED_TIME: true
-FILEIO_REPORTER: false
+# File exclusions
+FILTER_REGEX_EXCLUDE: '(node_modules/|\.git/|dist/|build/|target/)'
 ```
+
+**Optimizations applied:**
+- ⚡ **Faster execution**: Disabled redundant security linters (handled by our specialized actions)
+- 🎯 **Focused analysis**: Only essential code quality linters enabled
+- 🔄 **Parallel processing**: 4 cores for better performance
+- 📁 **Smart filtering**: Excludes common build/dependency directories
 
 ### Build Control Strategies
 
@@ -399,10 +450,12 @@ with:
 
 #### Lint and Quality Issues
 - **MegaLinter fails**: Check file encoding and syntax
-- **MegaLinter configuration**: Create `.mega-linter.yml` for custom settings
+- **MegaLinter configuration**: Use `.mega-linter.yml` for custom settings
+- **Redundant security alerts**: Security linters are disabled in MegaLinter (handled by specialized actions)
 - **SQL lint errors**: Verify `.sqlfluff` configuration and SQL file paths
 - **Too many lint errors**: Linting is non-blocking and won't fail the pipeline
 - **Language-specific issues**: MegaLinter supports 70+ languages with auto-detection
+- **Performance issues**: Reduce `PARALLEL_PROCESS_NUMBER` if needed
 
 ### Debug Information
 
@@ -444,9 +497,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Changelog
 
 ### Latest Updates
+- ✅ **Added MkDocs support** with automatic GitHub Pages deployment
+- ✅ **Enhanced project detection** for documentation sites (mkdocs.yml/mkdocs.yaml)
+- ✅ **Optimized MegaLinter configuration** for better performance and focus
+- ✅ **Eliminated redundant security scanning** in linter (dedicated actions handle security)
 - ✅ **Replaced Super-linter with MegaLinter** for better stability and performance
 - ✅ **Resolved branch detection issues** with modern linter that works on all branches
-- ✅ Added build control parameters (`enable_java_build`, `enable_angular_build`)
+- ✅ Added build control parameters (`enable_java_build`, `enable_angular_build`, `enable_mkdocs_build`)
 - ✅ Separated security actions into modular components (TruffleHog, Trivy, Renovate)
 - ✅ Improved project detection with individual output flags
 - ✅ Enhanced SARIF upload with fallback to artifacts

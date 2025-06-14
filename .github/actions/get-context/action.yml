@@ -26,6 +26,9 @@ outputs:
   quarkus:
     description: 'Whether Quarkus is detected'
     value: ${{ steps.project-type.outputs.quarkus }}
+  mkdocs:
+    description: 'Whether MkDocs is detected'
+    value: ${{ steps.project-type.outputs.mkdocs }}
   outputs:
     description: 'JSON object with all detected technologies'
     value: ${{ steps.project-type.outputs.outputs }}
@@ -41,17 +44,17 @@ runs:
         echo "🔍 Analyzing project in directory: $(pwd)"
         echo "📁 Directory contents:"
         ls -la
-        
-        # Initialize individual outputs
+          # Initialize individual outputs
         echo "java=false" >> $GITHUB_OUTPUT
         echo "pom=false" >> $GITHUB_OUTPUT
         echo "gradle=false" >> $GITHUB_OUTPUT
         echo "angular=false" >> $GITHUB_OUTPUT
         echo "spring=false" >> $GITHUB_OUTPUT
         echo "quarkus=false" >> $GITHUB_OUTPUT
+        echo "mkdocs=false" >> $GITHUB_OUTPUT
 
         # Réinitialisation des variables en JSON
-        outputs='{"java":false,"pom":false,"gradle":false,"angular":false,"spring":false,"quarkus":false}'
+        outputs='{"java":false,"pom":false,"gradle":false,"angular":false,"spring":false,"quarkus":false,"mkdocs":false}'
 
         # Fonction de détection
         detect_frameworks() {
@@ -85,11 +88,14 @@ runs:
             detect_frameworks "build.gradle"
           else
             detect_frameworks "build.gradle.kts"
-          fi
-        elif [ -f "angular.json" ]; then
+          fi        elif [ -f "angular.json" ]; then
           echo "✅ Angular project detected (angular.json found)"
           outputs=$(echo "$outputs" | jq '. + {"angular": true}')
           echo "angular=true" >> $GITHUB_OUTPUT
+        elif [ -f "mkdocs.yml" ] || [ -f "mkdocs.yaml" ]; then
+          echo "✅ MkDocs project detected (mkdocs.yml found)"
+          outputs=$(echo "$outputs" | jq '. + {"mkdocs": true}')
+          echo "mkdocs=true" >> $GITHUB_OUTPUT
         else
           echo "ℹ️ No specific project type detected"
         fi
