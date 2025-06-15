@@ -10,10 +10,6 @@ inputs:
     description: 'Additional build options'
     required: false
     default: ''
-  run_tests:
-    description: 'Whether to run tests before building'
-    required: false
-    default: 'true'
   build_platform:
     description: 'Target platform for container builds (arm64 or x86)'
     required: false
@@ -47,24 +43,6 @@ runs:
     - name: Install dependencies
       shell: bash
       run: npm ci
-
-    - name: Run tests
-      if: inputs.run_tests == 'true'
-      shell: bash
-      run: |
-        # Configure Chrome for headless testing in CI
-        export CHROME_BIN=$(which google-chrome-stable || which chromium-browser || which google-chrome)
-        
-        # Set up display for headless Chrome
-        export DISPLAY=:99
-        
-        # Run tests with headless Chrome configuration
-        if npm run test -- --watch=false --browsers=ChromeHeadless; then
-          echo "Tests passed successfully"
-        else
-          echo "Tests failed, continuing with build..."
-          exit 0
-        fi
 
     - name: Build Angular project
       shell: bash

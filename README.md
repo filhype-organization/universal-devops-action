@@ -122,18 +122,6 @@ jobs:
       id-token: write
 ```
 
-### Angular Project with Custom Node Version
-```yaml
-jobs:
-  build:
-    uses: filhype-organization/universal-devops-action/.github/workflows/github-actions.yml@v1
-    with:
-      node_version: '20'
-      enable_java_build: false  # Skip Java builds for Angular-only projects
-    secrets:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
-
 ## Workflow Details
 
 ### Project Detection
@@ -219,22 +207,9 @@ The security workflow uses separate composite actions for better modularity:
 - **Monorepo Support**: Use build control parameters (`enable_java_build`, `enable_angular_build`) for selective builds
 
 ### GitHub Permissions
-
-#### For all projects:
 - **Repository access**: Read/write permissions for code scanning and SARIF uploads
 - **Security tab access**: For vulnerability report uploads
 - **Actions permissions**: To run workflows and upload artifacts
-
-#### Additional permissions for MkDocs projects:
-When using MkDocs with GitHub Pages deployment, add these permissions to your workflow:
-```yaml
-permissions:
-  contents: write
-  pages: write
-  id-token: write
-```
-
-**Important**: These permissions must be set in your calling workflow, not in the reusable workflow itself.
 
 ### Build Requirements
 
@@ -259,6 +234,15 @@ permissions:
 - **Docker**: Available on GitHub-hosted runners
 - **Registry Authentication**: Optional (Docker Hub, GitHub Container Registry)
 - **Multi-arch**: Supported for both Java and Angular projects
+
+### GitHub Permissions for MkDocs
+For MkDocs projects that deploy to GitHub Pages, add these permissions:
+```yaml
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+```
 
 ### Security Scanning
 - **TruffleHog**: No additional setup required
@@ -451,7 +435,6 @@ with:
 - **Java build fails**: Check Java version compatibility and build tool configuration
 - **Angular build fails**: Verify Node.js version and package.json dependencies
 - **Native build unavailable**: Ensure you're using a Quarkus project (not Spring Boot)
-- **MkDocs deployment fails**: Ensure proper permissions are set in calling workflow
 
 #### Security Scanning Issues
 - **SARIF upload fails**: 
@@ -488,8 +471,7 @@ env:
 1. **Check workflow logs**: Detailed error messages are provided in job outputs
 2. **Review debug messages**: The `get-context` job provides detailed detection information
 3. **Validate configuration**: Ensure all required inputs and secrets are properly set
-4. **Check permissions**: For MkDocs, ensure GitHub Pages permissions are set in calling workflow
-5. **Test locally**: Most tools can be run locally for debugging
+4. **Test locally**: Most tools can be run locally for debugging
 
 ## Contributing
 
