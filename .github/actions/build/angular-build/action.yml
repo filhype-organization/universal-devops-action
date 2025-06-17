@@ -49,12 +49,17 @@ runs:
       run: npm ci
 
     - name: Setup Chrome
-      uses: browserstack/setup-chrome@latest
+      uses: browser-actions/setup-chrome@latest
+      with:
+        chrome-version: stable
 
     - name: Run tests
       if: inputs.run_tests == 'true'
       shell: bash
-      run: npm run test
+      run: |
+        export CHROME_BIN=/usr/bin/google-chrome
+        export DISPLAY=:99
+        npm run test -- --no-watch --no-progress --browsers=ChromeHeadless
 
     - name: Build Angular project
       shell: bash
