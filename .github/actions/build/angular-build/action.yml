@@ -54,15 +54,7 @@ runs:
     - name: Run tests
       if: inputs.run_tests == 'true'
       shell: bash
-      run: |
-        # Configure Chrome for headless testing in CI
-        export CHROME_BIN=$(which google-chrome-stable || which chromium-browser || which google-chrome)
-        
-        # Set up display for headless Chrome
-        export DISPLAY=:99
-        
-        # Run tests with headless Chrome configuration
-        npm run test -- --watch=false --browsers=ChromeHeadless
+      run: npm run test
 
     - name: Build Angular project
       shell: bash
