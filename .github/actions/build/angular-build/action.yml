@@ -39,7 +39,7 @@ runs:
   using: composite
   steps:
     - name: Set up Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node_version }}
         cache: npm
@@ -47,6 +47,9 @@ runs:
     - name: Install dependencies
       shell: bash
       run: npm ci
+
+    - name: Setup Chrome
+      uses: browserstack/setup-chrome@latest
 
     - name: Run tests
       if: inputs.run_tests == 'true'
