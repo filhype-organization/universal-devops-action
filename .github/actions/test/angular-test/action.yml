@@ -2,8 +2,8 @@ name: Angular Tests
 description: 'Run tests for Angular projects'
 
 inputs:
-  build_options:
-    description: 'Additional options for build commands'
+  test_options:
+    description: 'Additional options for test commands'
     required: false
     default: ''
   node_version:
@@ -26,4 +26,4 @@ runs:
 
     - name: Run tests
       shell: bash
-      run: npm test -- ${{ inputs.build_options }}
+      run: npm test -- ${{ inputs.test_options }}

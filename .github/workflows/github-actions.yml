@@ -128,7 +128,6 @@ jobs:
           echo "Java: ${{ needs.get-context.outputs.java }}"
           echo "Maven: ${{ needs.get-context.outputs.pom }}"
           echo "Gradle: ${{ needs.get-context.outputs.gradle }}"
-          echo "Angular: ${{ needs.get-context.outputs.angular }}"
           echo "Spring: ${{ needs.get-context.outputs.spring }}"
           echo "Quarkus: ${{ needs.get-context.outputs.quarkus }}"
           echo "Full outputs: ${{ needs.get-context.outputs.outputs }}"
@@ -141,13 +140,26 @@ jobs:
           java_version: ${{ inputs.java_version }}
           project_type: ${{ (needs.get-context.outputs.pom == 'true' && 'maven') || 'gradle' }}
 
+  test-node:
+    runs-on: trion/ng-cli-e2e:latest
+    if: needs.get-context.outputs.angular == 'true'
+    needs: [get-context]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Display Context
+        shell: bash
+        run: |
+          echo "Angular: ${{ needs.get-context.outputs.angular }}"
+          echo "Full outputs: ${{ needs.get-context.outputs.outputs }}"
+
       - name: Run Angular Tests
-        if: needs.get-context.outputs.angular == 'true'
         uses: filhype-organization/universal-devops-action/.github/actions/test/angular-test@test
         with:
-          build_options: ${{ inputs.build_options }}
+          test_options: ${{ inputs.test_options }}
           node_version: ${{ inputs.node_version }}
-          
+
   java-build:
     runs-on: ubuntu-latest    
     needs: [test, get-context]
