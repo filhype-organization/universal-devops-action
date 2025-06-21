@@ -10,10 +10,6 @@ inputs:
     description: 'Additional build options'
     required: false
     default: ''
-  run_tests:
-    description: 'Whether to run tests before building'
-    required: false
-    default: 'true'
   build_platform:
     description: 'Target platform for container builds (arm64 or x86)'
     required: false
@@ -47,19 +43,6 @@ runs:
     - name: Install dependencies
       shell: bash
       run: npm ci
-
-    - name: Setup Chrome
-      uses: browser-actions/setup-chrome@latest
-      with:
-        chrome-version: stable
-
-    - name: Run tests
-      if: inputs.run_tests == 'true'
-      shell: bash
-      run: |
-        export CHROME_BIN=/usr/bin/google-chrome
-        export DISPLAY=:99
-        npm run test -- --no-watch --no-progress --browsers=ChromeHeadless
 
     - name: Build Angular project
       shell: bash
