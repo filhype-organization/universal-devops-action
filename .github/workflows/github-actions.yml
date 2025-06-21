@@ -1,4 +1,4 @@
-name: Universal Devops Action
+name: Reusable workflow
 
 on:
   workflow_call:
@@ -32,7 +32,6 @@ on:
         description: 'Target platform for container builds (arm64 or x86)'
         required: false
         type: string
-        default: 'x86'
       container_build:
         description: 'Whether to build and push container image for Angular'
         required: false
@@ -57,6 +56,36 @@ on:
         description: 'Docker image name (required for container builds)'
         required: false
         type: string
+      enable_java_build:
+        description: 'Enable Java build job'
+        required: false
+        type: boolean
+        default: true
+      enable_angular_build:
+        description: 'Enable Angular build job'
+        required: false
+        type: boolean
+        default: true
+      run_tests:
+        description: 'Whether to run tests before building (Angular)'
+        required: false
+        type: boolean
+        default: true
+      enable_mkdocs_build:
+        description: 'Enable MkDocs build and deploy job'
+        required: false
+        type: boolean
+        default: true
+      python_version:
+        description: 'Python version for MkDocs'
+        required: false
+        type: string
+        default: '3.x'
+      mkdocs_requirements:
+        description: 'MkDocs requirements (space-separated packages)'
+        required: false
+        type: string
+        default: 'mkdocs-material'
     secrets:
       GH_TOKEN:
         description: 'GitHub token for authentication'
@@ -68,8 +97,7 @@ on:
 
 jobs:
   get-context:
-    
-    runs-on: ubuntu-latest    
+    runs-on: ubuntu-latest
     outputs:
       java: ${{ steps.project-type.outputs.java }}
       pom: ${{ steps.project-type.outputs.pom }}
@@ -77,52 +105,74 @@ jobs:
       angular: ${{ steps.project-type.outputs.angular }}
       spring: ${{ steps.project-type.outputs.spring }}
       quarkus: ${{ steps.project-type.outputs.quarkus }}
+      mkdocs: ${{ steps.project-type.outputs.mkdocs }}
+      outputs: ${{ steps.project-type.outputs.outputs }}
     steps:
-      - name: Checkout universal-devops-action
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          repository: filhype-organization/universal-devops-action
-          path: .universal-devops-action
-          ref: main
-
+      
       - name: Get Context
         id: project-type
-        uses: ./.universal-devops-action/.github/actions/get-context
+        uses: filhype-organization/universal-devops-action/.github/actions/get-context@main
   
-  lint:
+  test:
     runs-on: ubuntu-latest
-    needs: get-context
-    continue-on-error: true
+    if: needs.get-context.outputs.java == 'true'
+    needs: [get-context]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run Linters
-        uses: ./.github/actions/lint
-        with:
-          sql_lint_path: ${{ inputs.sql_lint_path }}
-          sql_lint_config: ${{ inputs.sql_lint_config }}
-          github_token: ${{ secrets.GH_TOKEN }}
+        
+      - name: Display Context
+        shell: bash
+        run: |
+          echo "Java: ${{ needs.get-context.outputs.java }}"
+          echo "Maven: ${{ needs.get-context.outputs.pom }}"
+          echo "Gradle: ${{ needs.get-context.outputs.gradle }}"
+          echo "Spring: ${{ needs.get-context.outputs.spring }}"
+          echo "Quarkus: ${{ needs.get-context.outputs.quarkus }}"
+          echo "Full outputs: ${{ needs.get-context.outputs.outputs }}"
 
-  security:
+      - name: Run Java Tests
+        if: needs.get-context.outputs.java == 'true'
+        uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@main
+        with:
+          test_options: ${{ inputs.test_options }}
+          java_version: ${{ inputs.java_version }}
+          project_type: ${{ (needs.get-context.outputs.pom == 'true' && 'maven') || 'gradle' }}
+  
+  test-node:
     runs-on: ubuntu-latest
-    needs: get-context
+    container: 
+      image: trion/ng-cli-e2e:latest
+      options: --user root
+    if: needs.get-context.outputs.angular == 'true'
+    needs: [get-context]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run Security Checks
-        uses: ./.github/actions/security
+        
+      - name: Display Context
+        shell: bash
+        run: |
+          echo "Angular: ${{ needs.get-context.outputs.angular }}"
+          echo "Full outputs: ${{ needs.get-context.outputs.outputs }}"
+
+      - name: Run Angular Tests
+        uses: filhype-organization/universal-devops-action/.github/actions/test/angular-test@main
         with:
-          trufflehog_args: ${{ inputs.trufflehog_args }}
+          node_version: ${{ inputs.node_version }}
+          test_options: ${{ inputs.test_options }}
 
   java-build:
-    runs-on: ubuntu-latest
-    needs: [lint, security, get-context]
-    if: needs.get-context.outputs.java == 'true'
+    runs-on: ubuntu-latest    
+    needs: [test, get-context]
+    if: needs.get-context.outputs.java == 'true' && inputs.enable_java_build
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build Java Project
-        uses: ./.github/actions/build/java-build
+        uses: filhype-organization/universal-devops-action/.github/actions/build/java-build@main
         with:
           java_version: ${{ inputs.java_version }}
           build_options: ${{ inputs.build_options }}
@@ -135,13 +185,13 @@ jobs:
 
   angular-build:
     runs-on: ubuntu-latest
-    needs: [lint, security, get-context]
-    if: needs.get-context.outputs.angular == 'true'
+    needs: [test-node, get-context]
+    if: needs.get-context.outputs.angular == 'true' && inputs.enable_angular_build
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build Angular Project
-        uses: ./.github/actions/build/angular-build
+        uses: filhype-organization/universal-devops-action/.github/actions/build/angular-build@main
         with:
           node_version: ${{ inputs.node_version }}
           build_options: ${{ inputs.build_options }}
@@ -150,22 +200,92 @@ jobs:
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
-
-  test:
+          
+  lint:
     runs-on: ubuntu-latest
-    needs: [java-build, angular-build, get-context]
+    needs: [get-context, java-build, angular-build]
+    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
+    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run Java Tests
-        if: needs.get-context.outputs.java == 'true'
-        uses: ./.github/actions/test/java-test
+      - name: Run Linters
+        uses: filhype-organization/universal-devops-action/.github/actions/lint@main
         with:
-          test_options: ${{ inputs.test_options }}
-          java_version: ${{ inputs.java_version }}
-      - name: Run Angular Tests
-        if: needs.get-context.outputs.angular == 'true'
-        uses: ./.github/actions/test/angular-test
+          sql_lint_path: ${{ inputs.sql_lint_path }}
+          sql_lint_config: ${{ inputs.sql_lint_config }}
+          github_token: ${{ secrets.GH_TOKEN }}
+          
+  security:
+    runs-on: ubuntu-latest
+    needs: [get-context, java-build, angular-build]
+    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Run TruffleHog Secret Scanning
+        uses: filhype-organization/universal-devops-action/.github/actions/security/trufflehog@main
         with:
-          build_options: ${{ inputs.build_options }}
-          node_version: ${{ inputs.node_version }}
+          trufflehog_args: ${{ inputs.trufflehog_args }}
+          
+      - name: Run Trivy Vulnerability Scanning
+        uses: filhype-organization/universal-devops-action/.github/actions/security/trivy@main
+        with:
+          severity: 'CRITICAL,HIGH'
+          upload_sarif: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Security Scan Summary
+        shell: bash
+        run: |
+          echo "🛡️ Security scanning completed!"
+          echo "✅ TruffleHog secret detection: Done"
+          echo "✅ Trivy vulnerability analysis: Done"
+          echo ""          echo "📊 Check the following for results:"
+          echo "  - GitHub Security tab for Trivy SARIF results"
+          echo "  - Job logs for TruffleHog secret detection"
+          echo "  - Any failed steps indicate security issues to address"
+  mkdocs-build:
+    runs-on: ubuntu-latest
+    needs: [get-context]
+    if: needs.get-context.outputs.mkdocs == 'true' && inputs.enable_mkdocs_build == true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build and Deploy MkDocs
+        uses: filhype-organization/universal-devops-action/.github/actions/mkdocs-build@main
+        with:
+          python_version: ${{ inputs.python_version }}
+          mkdocs_requirements: ${{ inputs.mkdocs_requirements }}
+          deploy: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: MkDocs Build Summary
+        shell: bash
+        run: |
+          echo "📚 MkDocs documentation build completed!"
+          echo "🚀 Documentation deployed to GitHub Pages"
+          echo ""
+          echo "📖 Your documentation is available at:"
+          echo "  https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+
+  analysis:
+    runs-on: ubuntu-latest
+    needs: [get-context]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Renovate Configuration
+        uses: filhype-organization/universal-devops-action/.github/actions/analysis/renovate@main
+        with:
+          renovate_schedule: 'before 6am on monday'
+          auto_merge_patch: 'true'
+          auto_merge_dev_deps: 'true'
+
+
+

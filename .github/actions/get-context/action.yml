@@ -7,6 +7,32 @@ inputs:
     required: true
     default: '.'
 
+outputs:
+  java:
+    description: 'Whether Java is detected'
+    value: ${{ steps.project-type.outputs.java }}
+  pom:
+    description: 'Whether pom.xml is detected'
+    value: ${{ steps.project-type.outputs.pom }}
+  gradle:
+    description: 'Whether build.gradle is detected'
+    value: ${{ steps.project-type.outputs.gradle }}
+  angular:
+    description: 'Whether Angular is detected'
+    value: ${{ steps.project-type.outputs.angular }}
+  spring:
+    description: 'Whether Spring Boot is detected'
+    value: ${{ steps.project-type.outputs.spring }}
+  quarkus:
+    description: 'Whether Quarkus is detected'
+    value: ${{ steps.project-type.outputs.quarkus }}
+  mkdocs:
+    description: 'Whether MkDocs is detected'
+    value: ${{ steps.project-type.outputs.mkdocs }}
+  outputs:
+    description: 'JSON object with all detected technologies'
+    value: ${{ steps.project-type.outputs.outputs }}
+
 runs:
   using: composite
   steps:
@@ -14,42 +40,67 @@ runs:
       shell: bash
       run: |
         cd ${{ inputs.working-directory }}
-        # Initialize output variables
+        
+        echo "🔍 Analyzing project in directory: $(pwd)"
+        echo "📁 Directory contents:"
+        ls -la
+          # Initialize individual outputs
         echo "java=false" >> $GITHUB_OUTPUT
         echo "pom=false" >> $GITHUB_OUTPUT
         echo "gradle=false" >> $GITHUB_OUTPUT
         echo "angular=false" >> $GITHUB_OUTPUT
         echo "spring=false" >> $GITHUB_OUTPUT
         echo "quarkus=false" >> $GITHUB_OUTPUT
+        echo "mkdocs=false" >> $GITHUB_OUTPUT
 
-        # Function to detect frameworks in a file
+        # Réinitialisation des variables en JSON
+        outputs='{"java":false,"pom":false,"gradle":false,"angular":false,"spring":false,"quarkus":false,"mkdocs":false}'
+
+        # Fonction de détection
         detect_frameworks() {
           local file=$1
+          echo "🔍 Analyzing $file for frameworks..."
           if grep -q "org.springframework.boot" "$file"; then
-            echo "Found Spring Boot dependency"
+            echo "✅ Spring Boot detected in $file"
+            outputs=$(echo "$outputs" | jq '. + {"spring": true}')
             echo "spring=true" >> $GITHUB_OUTPUT
-          elif grep -q "io.quarkus" "$file"; then
-            echo "Found Quarkus dependency"
+          fi
+          if grep -q "io.quarkus" "$file"; then
+            echo "✅ Quarkus detected in $file"
+            outputs=$(echo "$outputs" | jq '. + {"quarkus": true}')
             echo "quarkus=true" >> $GITHUB_OUTPUT
           fi
         }
 
-        # Project type detection
-        if [ -f "pom.xml" ]; then 
-          echo "Has pom.xml file in root directory"
+        # Détection principale
+        if [ -f "pom.xml" ]; then
+          echo "✅ Maven project detected (pom.xml found)"
+          outputs=$(echo "$outputs" | jq '. + {"java": true, "pom": true}')
           echo "java=true" >> $GITHUB_OUTPUT
           echo "pom=true" >> $GITHUB_OUTPUT
           detect_frameworks "pom.xml"
-          
-        elif [ -f "build.gradle" ]; then
-          echo "Has build.gradle file in root directory"
+        elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+          echo "✅ Gradle project detected (build.gradle found)"
+          outputs=$(echo "$outputs" | jq '. + {"java": true, "gradle": true}')
           echo "java=true" >> $GITHUB_OUTPUT
           echo "gradle=true" >> $GITHUB_OUTPUT
-          detect_frameworks "build.gradle"
-          
-        elif [ -f "angular.json" ]; then 
-          echo "Has angular.json file in root directory"
+          if [ -f "build.gradle" ]; then
+            detect_frameworks "build.gradle"
+          else
+            detect_frameworks "build.gradle.kts"
+          fi        elif [ -f "angular.json" ]; then
+          echo "✅ Angular project detected (angular.json found)"
+          outputs=$(echo "$outputs" | jq '. + {"angular": true}')
           echo "angular=true" >> $GITHUB_OUTPUT
+        elif [ -f "mkdocs.yml" ] || [ -f "mkdocs.yaml" ]; then
+          echo "✅ MkDocs project detected (mkdocs.yml found)"
+          outputs=$(echo "$outputs" | jq '. + {"mkdocs": true}')
+          echo "mkdocs=true" >> $GITHUB_OUTPUT
         else
-          echo "No recognized project files found"
+          echo "ℹ️ No specific project type detected"
         fi
+
+        # Export final en une seule commande
+        outputs=$(echo "$outputs" | jq -c '.')
+        echo "outputs=$outputs" >> $GITHUB_OUTPUT
+        echo "🎯 Final detection results: $outputs"
