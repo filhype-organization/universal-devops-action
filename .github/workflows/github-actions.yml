@@ -158,8 +158,8 @@ jobs:
       - name: Run Angular Tests
         uses: filhype-organization/universal-devops-action/.github/actions/test/angular-test@test
         with:
-          test_options: ${{ inputs.test_options }}
           node_version: ${{ inputs.node_version }}
+          test_options: ${{ inputs.test_options }}
 
   java-build:
     runs-on: ubuntu-latest    
