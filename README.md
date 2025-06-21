@@ -343,7 +343,7 @@ The `get-context` job provides detailed information about the detected project:
 
 ### Custom Trivy Configuration
 
-Create a `.trivy.yaml` file in your repository root:
+Create a `conf/.trivy.yaml` file in your repository for advanced security scanning:
 
 ```yaml
 # Severity levels to report
@@ -362,42 +362,24 @@ vulnerability:
 ignorefile: .trivyignore
 ```
 
-### Custom MegaLinter Configuration
+### MegaLinter Configuration
 
-Create a `.mega-linter.yml` file in your repository root for advanced customization:
+MegaLinter is configured inline within the workflow for optimal performance and maintainability:
 
-```yaml
-# Performance optimization
-VALIDATE_ALL_CODEBASE: false
-PARALLEL_PROCESS_NUMBER: 4
-LOG_LEVEL: INFO
-
-# Disable redundant linters (we have specialized security actions)
-DISABLE_LINTERS:
-  - REPOSITORY_TRUFFLEHOG  # We have dedicated TruffleHog action
-  - REPOSITORY_TRIVY       # We have dedicated Trivy action
-  - REPOSITORY_GRYPE       # Redundant with Trivy
-  - REPOSITORY_DEVSKIM     # Too strict for universal pipeline
-
-# Enable essential code quality linters
-ENABLE_LINTERS:
-  - ACTION_ACTIONLINT      # GitHub Actions
-  - YAML_YAMLLINT          # YAML validation
-  - JSON_JSONLINT          # JSON validation
-  - JAVASCRIPT_ES          # JavaScript/TypeScript
-  - PYTHON_FLAKE8          # Python code quality
-  - JAVA_CHECKSTYLE        # Java code style
-  - MARKDOWN_MARKDOWNLINT  # Documentation
-  - DOCKERFILE_HADOLINT    # Docker best practices
-
-# File exclusions
-FILTER_REGEX_EXCLUDE: '(node_modules/|\.git/|dist/|build/|target/)'
-```
-
-**Optimizations applied:**
-- ⚡ **Faster execution**: Disabled redundant security linters (handled by our specialized actions)
-- 🎯 **Focused analysis**: Only essential code quality linters enabled
+**Current configuration includes:**
+- ⚡ **Faster execution**: Security linters disabled (handled by specialized actions)
+- 🎯 **Focused analysis**: Essential code quality linters only
 - 🔄 **Parallel processing**: 4 cores for better performance
+- 📊 **Optimized reporting**: Minimal output for CI/CD efficiency
+
+**Enabled linters:**
+- GitHub Actions validation (ActionLint)
+- YAML/JSON validation and formatting
+- JavaScript/TypeScript code quality
+- Python code quality (Flake8, Black)
+- Java code style (Checkstyle)
+- Markdown documentation (MarkdownLint)
+- Docker best practices (Hadolint)
 - 📁 **Smart filtering**: Excludes common build/dependency directories
 
 ### Build Control Strategies
@@ -450,7 +432,8 @@ with:
 
 #### Lint and Quality Issues
 - **MegaLinter fails**: Check file encoding and syntax
-- **MegaLinter configuration**: Use `.mega-linter.yml` for custom settings
+- **MegaLinter configuration**: Configuration is inline in the workflow for consistency
+- **Trivy configuration**: Use `conf/.trivy.yaml` for custom security scanning settings
 - **Redundant security alerts**: Security linters are disabled in MegaLinter (handled by specialized actions)
 - **SQL lint errors**: Verify `.sqlfluff` configuration and SQL file paths
 - **Too many lint errors**: Linting is non-blocking and won't fail the pipeline

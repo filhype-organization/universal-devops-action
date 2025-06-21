@@ -5,7 +5,7 @@ inputs:
   trivy_config:
     description: 'Path to Trivy configuration file'
     required: false
-    default: '.trivy.yaml'
+    default: 'conf/.trivy.yaml'
   severity:
     description: 'Severity levels to report (CRITICAL,HIGH,MEDIUM,LOW)'
     required: false
