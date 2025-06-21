@@ -18,12 +18,30 @@ runs:
       uses: actions/setup-node@v3
       with:
         node-version: ${{ inputs.node_version }}
-        cache: 'npm'
-
+        cache: 'npm'    
+        
     - name: Install dependencies
       shell: bash
       run: npm ci
 
+    - name: Check for test files
+      shell: bash
+      run: |
+        if find . -name "*.spec.ts" | head -1 | grep -q .; then
+          echo "Test files found"
+          echo "has_tests=true" >> $GITHUB_OUTPUT
+        else
+          echo "No test files found - skipping tests"
+          echo "has_tests=false" >> $GITHUB_OUTPUT
+        fi
+      id: check-tests
+
     - name: Run tests
       shell: bash
+      if: steps.check-tests.outputs.has_tests == 'true'
       run: npm test -- --watch=false --browsers=ChromeHeadless ${{ inputs.test_options }}
+
+    - name: Skip tests message
+      shell: bash
+      if: steps.check-tests.outputs.has_tests == 'false'
+      run: echo "⚠️ No test files found - skipping Angular tests"
