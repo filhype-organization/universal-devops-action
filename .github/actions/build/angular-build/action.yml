@@ -48,6 +48,24 @@ runs:
       shell: bash
       run: npm run build -- ${{ inputs.build_options }}
 
+    - name: Prepare artifacts for Docker
+      if: inputs.container_build == 'true'
+      shell: bash
+      run: |
+        # Create target/artifact directory structure expected by Dockerfile
+        mkdir -p target/artifact
+        
+        # Copy Angular build output to target/artifact
+        # Angular typically builds to dist/ folder
+        if [ -d "dist" ]; then
+          cp -r dist/* target/artifact/
+          echo "✅ Copied Angular build artifacts from dist/ to target/artifact/"
+        else
+          echo "❌ No dist/ folder found. Available directories:"
+          ls -la
+          exit 1
+        fi
+
     - name: Set up QEMU
       if: inputs.container_build == 'true' && inputs.docker_username != ''
       uses: docker/setup-qemu-action@v3
