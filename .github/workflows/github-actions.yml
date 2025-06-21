@@ -140,9 +140,10 @@ jobs:
           test_options: ${{ inputs.test_options }}
           java_version: ${{ inputs.java_version }}
           project_type: ${{ (needs.get-context.outputs.pom == 'true' && 'maven') || 'gradle' }}
-
+  
   test-node:
-    runs-on: trion/ng-cli-e2e:latest
+    runs-on: ubuntu-latest
+    container: trion/ng-cli-e2e:latest
     if: needs.get-context.outputs.angular == 'true'
     needs: [get-context]
     steps:
