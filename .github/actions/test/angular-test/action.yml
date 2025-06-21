@@ -26,4 +26,4 @@ runs:
 
     - name: Run tests
       shell: bash
-      run: npm test -- ${{ inputs.test_options }}
+      run: npm test -- --watch=false --browsers=ChromeHeadless ${{ inputs.test_options }}
