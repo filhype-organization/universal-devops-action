@@ -113,11 +113,11 @@ jobs:
       
       - name: Get Context
         id: project-type
-        uses: filhype-organization/universal-devops-action/.github/actions/get-context@test
+        uses: filhype-organization/universal-devops-action/.github/actions/get-context@main
   
   test:
     runs-on: ubuntu-latest
-    if: needs.get-context.outputs.angular != 'true' && needs.get-context.outputs.mkdocs != 'true'
+    if: needs.get-context.outputs.java == 'true'
     needs: [get-context]
     steps:
       - name: Checkout code
@@ -135,7 +135,7 @@ jobs:
 
       - name: Run Java Tests
         if: needs.get-context.outputs.java == 'true'
-        uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@test
+        uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@main
         with:
           test_options: ${{ inputs.test_options }}
           java_version: ${{ inputs.java_version }}
@@ -159,7 +159,7 @@ jobs:
           echo "Full outputs: ${{ needs.get-context.outputs.outputs }}"
 
       - name: Run Angular Tests
-        uses: filhype-organization/universal-devops-action/.github/actions/test/angular-test@test
+        uses: filhype-organization/universal-devops-action/.github/actions/test/angular-test@main
         with:
           node_version: ${{ inputs.node_version }}
           test_options: ${{ inputs.test_options }}
@@ -172,7 +172,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build Java Project
-        uses: filhype-organization/universal-devops-action/.github/actions/build/java-build@test
+        uses: filhype-organization/universal-devops-action/.github/actions/build/java-build@main
         with:
           java_version: ${{ inputs.java_version }}
           build_options: ${{ inputs.build_options }}
@@ -191,7 +191,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build Angular Project
-        uses: filhype-organization/universal-devops-action/.github/actions/build/angular-build@test
+        uses: filhype-organization/universal-devops-action/.github/actions/build/angular-build@main
         with:
           node_version: ${{ inputs.node_version }}
           build_options: ${{ inputs.build_options }}
@@ -210,7 +210,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Run Linters
-        uses: filhype-organization/universal-devops-action/.github/actions/lint@test
+        uses: filhype-organization/universal-devops-action/.github/actions/lint@main
         with:
           sql_lint_path: ${{ inputs.sql_lint_path }}
           sql_lint_config: ${{ inputs.sql_lint_config }}
@@ -225,12 +225,12 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Run TruffleHog Secret Scanning
-        uses: filhype-organization/universal-devops-action/.github/actions/security/trufflehog@test
+        uses: filhype-organization/universal-devops-action/.github/actions/security/trufflehog@main
         with:
           trufflehog_args: ${{ inputs.trufflehog_args }}
           
       - name: Run Trivy Vulnerability Scanning
-        uses: filhype-organization/universal-devops-action/.github/actions/security/trivy@test
+        uses: filhype-organization/universal-devops-action/.github/actions/security/trivy@main
         with:
           severity: 'CRITICAL,HIGH'
           upload_sarif: 'true'
@@ -242,10 +242,10 @@ jobs:
           echo "🛡️ Security scanning completed!"
           echo "✅ TruffleHog secret detection: Done"
           echo "✅ Trivy vulnerability analysis: Done"
-          echo ""
-          echo "📊 Check the following for results:"
+          echo ""          echo "📊 Check the following for results:"
           echo "  - GitHub Security tab for Trivy SARIF results"
-          echo "  - Job logs for TruffleHog secret detection"          echo "  - Any failed steps indicate security issues to address"
+          echo "  - Job logs for TruffleHog secret detection"
+          echo "  - Any failed steps indicate security issues to address"
   mkdocs-build:
     runs-on: ubuntu-latest
     needs: [get-context]
@@ -257,7 +257,7 @@ jobs:
           fetch-depth: 0
 
       - name: Build and Deploy MkDocs
-        uses: filhype-organization/universal-devops-action/.github/actions/mkdocs-build@test
+        uses: filhype-organization/universal-devops-action/.github/actions/mkdocs-build@main
         with:
           python_version: ${{ inputs.python_version }}
           mkdocs_requirements: ${{ inputs.mkdocs_requirements }}
@@ -281,7 +281,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Setup Renovate Configuration
-        uses: filhype-organization/universal-devops-action/.github/actions/analysis/renovate@test
+        uses: filhype-organization/universal-devops-action/.github/actions/analysis/renovate@main
         with:
           renovate_schedule: 'before 6am on monday'
           auto_merge_patch: 'true'
