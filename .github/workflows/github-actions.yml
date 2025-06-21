@@ -117,7 +117,7 @@ jobs:
   
   test:
     runs-on: ubuntu-latest
-    if: needs.get-context.outputs.angular != 'true'
+    if: needs.get-context.outputs.angular != 'true' && needs.get-context.outputs.mkdocs != 'true'
     needs: [get-context]
     steps:
       - name: Checkout code
