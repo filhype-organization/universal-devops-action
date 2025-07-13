@@ -370,7 +370,7 @@ ignorefile: .trivyignore
 The workflow automatically configures Angular tests for CI environments with:
 - Temporary CI-optimized karma.conf.js with `singleRun: true` (auto-restored after tests)
 - ChromeHeadlessNoSandbox browser with CI-safe flags: `--no-sandbox --disable-gpu --disable-dev-shm-usage`
-- Angular CLI options: `--watch=false --progress=false --single-run`
+- Angular CLI options: `--watch=false --progress=false`
 - Guaranteed cleanup with `if: always()` condition
 
 **Custom test options:**
@@ -512,7 +512,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Changelog
 
 ### Latest Updates
-- ✅ **Fixed Angular test execution** - Removed invalid `--single-run` CLI option, auto-configure Karma for CI
 - ✅ **Added MkDocs support** with automatic GitHub Pages deployment
 - ✅ **Enhanced project detection** for documentation sites (mkdocs.yml/mkdocs.yaml)
 - ✅ **Optimized MegaLinter configuration** for better performance and focus
