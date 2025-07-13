@@ -36,10 +36,33 @@ runs:
         fi
       id: check-tests
 
+    - name: Configure Karma for CI
+      shell: bash
+      if: steps.check-tests.outputs.has_tests == 'true'
+      run: |
+        # Check if karma.conf.js exists and backup if needed
+        if [ -f karma.conf.js ]; then
+          # Check if singleRun is already configured
+          if ! grep -q "singleRun.*true" karma.conf.js; then
+            echo "Adding CI configuration to karma.conf.js"
+            # Create a temporary patch to ensure singleRun: true in CI
+            sed -i.bak 's/singleRun: false/singleRun: true/g' karma.conf.js
+          fi
+        fi
+
     - name: Run tests
       shell: bash
       if: steps.check-tests.outputs.has_tests == 'true'
-      run: npm test -- --watch=false --single-run=true --progress=false --browsers=ChromeHeadless ${{ inputs.test_options }}
+      run: npm test -- --watch=false --progress=false --browsers=ChromeHeadless ${{ inputs.test_options }}
+
+    - name: Restore Karma config
+      shell: bash
+      if: steps.check-tests.outputs.has_tests == 'true' && always()
+      run: |
+        # Restore original karma.conf.js if backup exists
+        if [ -f karma.conf.js.bak ]; then
+          mv karma.conf.js.bak karma.conf.js
+        fi
 
     - name: Skip tests message
       shell: bash

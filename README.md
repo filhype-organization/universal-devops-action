@@ -177,7 +177,7 @@ For Java projects, it also detects the framework:
    - Runs appropriate tests based on project type
    - Only runs if corresponding build job ran successfully
    - Configurable test options
-   - **Angular tests**: Run with `--single-run=true --progress=false` for proper CI execution
+   - **Angular tests**: Run with CI-optimized configuration (auto-configured `singleRun: true`)
    - **Java tests**: Support both Maven and Gradle test execution
 
 ### Security Actions (Modular)
@@ -368,9 +368,9 @@ ignorefile: .trivyignore
 
 **Angular Test Optimization for CI:**
 The workflow automatically configures Angular tests for CI environments with:
-- `--single-run=true`: Ensures Karma exits after tests
-- `--progress=false`: Reduces output verbosity  
+- Temporary `singleRun: true` configuration in karma.conf.js (auto-restored after tests)
 - `--watch=false`: Disables file watching
+- `--progress=false`: Reduces output verbosity  
 - `--browsers=ChromeHeadless`: Uses headless browser
 
 **Custom test options:**
@@ -444,8 +444,8 @@ with:
 #### Testing Issues
 - **Angular tests hang after completion**: 
   - Tests run successfully but Karma doesn't exit
-  - Fixed with `--single-run=true --progress=false` options
-  - Ensure your `karma.conf.js` has `singleRun: true` for CI environments
+  - Workflow automatically configures `singleRun: true` in karma.conf.js for CI
+  - Uses Angular CLI options: `--watch=false --progress=false --browsers=ChromeHeadless`
 - **Tests timeout in CI**: Increase timeout values in test configuration
 - **Browser launch failures**: ChromeHeadless should work in most CI environments
 
@@ -511,6 +511,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Changelog
 
 ### Latest Updates
+- ✅ **Fixed Angular test execution** - Removed invalid `--single-run` CLI option, auto-configure Karma for CI
 - ✅ **Added MkDocs support** with automatic GitHub Pages deployment
 - ✅ **Enhanced project detection** for documentation sites (mkdocs.yml/mkdocs.yaml)
 - ✅ **Optimized MegaLinter configuration** for better performance and focus
