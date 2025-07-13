@@ -368,10 +368,10 @@ ignorefile: .trivyignore
 
 **Angular Test Optimization for CI:**
 The workflow automatically configures Angular tests for CI environments with:
-- Temporary `singleRun: true` configuration in karma.conf.js (auto-restored after tests)
-- `--watch=false`: Disables file watching
-- `--progress=false`: Reduces output verbosity  
-- `--browsers=ChromeHeadless`: Uses headless browser
+- Temporary CI-optimized karma.conf.js with `singleRun: true` (auto-restored after tests)
+- ChromeHeadlessNoSandbox browser with CI-safe flags: `--no-sandbox --disable-gpu --disable-dev-shm-usage`
+- Angular CLI options: `--watch=false --progress=false --single-run`
+- Guaranteed cleanup with `if: always()` condition
 
 **Custom test options:**
 ```yaml
@@ -443,11 +443,12 @@ with:
 
 #### Testing Issues
 - **Angular tests hang after completion**: 
-  - Tests run successfully but Karma doesn't exit
-  - Workflow automatically configures `singleRun: true` in karma.conf.js for CI
-  - Uses Angular CLI options: `--watch=false --progress=false --browsers=ChromeHeadless`
+  - Tests run successfully but Karma doesn't exit in CI environments
+  - Workflow creates temporary CI-optimized karma.conf.js with `singleRun: true`
+  - Uses ChromeHeadlessNoSandbox with `--no-sandbox --disable-gpu` flags for CI
+  - Original configuration automatically restored after tests
 - **Tests timeout in CI**: Increase timeout values in test configuration
-- **Browser launch failures**: ChromeHeadless should work in most CI environments
+- **Browser launch failures**: ChromeHeadlessNoSandbox resolves sandbox issues in CI
 
 #### Security Scanning Issues
 - **SARIF upload fails**: 

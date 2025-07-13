@@ -42,25 +42,49 @@ runs:
       run: |
         # Check if karma.conf.js exists and backup if needed
         if [ -f karma.conf.js ]; then
-          # Check if singleRun is already configured
-          if ! grep -q "singleRun.*true" karma.conf.js; then
-            echo "Adding CI configuration to karma.conf.js"
-            # Create a temporary patch to ensure singleRun: true in CI
-            sed -i.bak 's/singleRun: false/singleRun: true/g' karma.conf.js
-          fi
+          echo "Backing up karma.conf.js"
+          cp karma.conf.js karma.conf.js.bak
+          
+          # Create a temporary karma config patch for CI
+          cat > karma.ci.patch.js << 'EOF'
+        // CI-specific Karma configuration
+        const originalConfig = require('./karma.conf.js.bak');
+        
+        module.exports = function(config) {
+          originalConfig(config);
+          
+          // Override settings for CI
+          config.set({
+            singleRun: true,
+            browsers: ['ChromeHeadlessNoSandbox'],
+            customLaunchers: {
+              ChromeHeadlessNoSandbox: {
+                base: 'ChromeHeadless',
+                flags: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
+              }
+            }
+          });
+        };
+        EOF
+          
+          # Replace karma.conf.js with CI version
+          mv karma.ci.patch.js karma.conf.js
+        else
+          echo "No karma.conf.js found, using CLI options only"
         fi
 
     - name: Run tests
       shell: bash
       if: steps.check-tests.outputs.has_tests == 'true'
-      run: npm test -- --watch=false --progress=false --browsers=ChromeHeadless ${{ inputs.test_options }}
+      run: npm test -- --watch=false --progress=false --single-run ${{ inputs.test_options }}
 
     - name: Restore Karma config
       shell: bash
-      if: steps.check-tests.outputs.has_tests == 'true' && always()
+      if: always()
       run: |
         # Restore original karma.conf.js if backup exists
         if [ -f karma.conf.js.bak ]; then
+          echo "Restoring original karma.conf.js"
           mv karma.conf.js.bak karma.conf.js
         fi
 
