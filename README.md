@@ -177,6 +177,8 @@ For Java projects, it also detects the framework:
    - Runs appropriate tests based on project type
    - Only runs if corresponding build job ran successfully
    - Configurable test options
+   - **Angular tests**: Run with `--single-run=true --progress=false` for proper CI execution
+   - **Java tests**: Support both Maven and Gradle test execution
 
 ### Security Actions (Modular)
 
@@ -362,6 +364,27 @@ vulnerability:
 ignorefile: .trivyignore
 ```
 
+### Test Configuration
+
+**Angular Test Optimization for CI:**
+The workflow automatically configures Angular tests for CI environments with:
+- `--single-run=true`: Ensures Karma exits after tests
+- `--progress=false`: Reduces output verbosity  
+- `--watch=false`: Disables file watching
+- `--browsers=ChromeHeadless`: Uses headless browser
+
+**Custom test options:**
+```yaml
+with:
+  test_options: '--code-coverage --source-map=false'
+```
+
+**Java Test Configuration:**
+```yaml
+with:
+  test_options: '-Dtest.profile=ci -Dmaven.test.failure.ignore=false'
+```
+
 ### MegaLinter Configuration
 
 MegaLinter is configured inline within the workflow for optimal performance and maintainability:
@@ -417,6 +440,14 @@ with:
 - **Java build fails**: Check Java version compatibility and build tool configuration
 - **Angular build fails**: Verify Node.js version and package.json dependencies
 - **Native build unavailable**: Ensure you're using a Quarkus project (not Spring Boot)
+
+#### Testing Issues
+- **Angular tests hang after completion**: 
+  - Tests run successfully but Karma doesn't exit
+  - Fixed with `--single-run=true --progress=false` options
+  - Ensure your `karma.conf.js` has `singleRun: true` for CI environments
+- **Tests timeout in CI**: Increase timeout values in test configuration
+- **Browser launch failures**: ChromeHeadless should work in most CI environments
 
 #### Security Scanning Issues
 - **SARIF upload fails**: 

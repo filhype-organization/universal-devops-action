@@ -39,7 +39,7 @@ runs:
     - name: Run tests
       shell: bash
       if: steps.check-tests.outputs.has_tests == 'true'
-      run: npm test -- --watch=false --browsers=ChromeHeadless ${{ inputs.test_options }}
+      run: npm test -- --watch=false --single-run=true --progress=false --browsers=ChromeHeadless ${{ inputs.test_options }}
 
     - name: Skip tests message
       shell: bash
