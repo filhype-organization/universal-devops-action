@@ -15,9 +15,9 @@ inputs:
     required: false
     default: 'legacy'
   build_platform:
-    description: 'Target platform for native builds (arm64 or x86)'
+    description: 'Target platform for native builds (arm64 or amd64)'
     required: false
-    default: 'x86'
+    default: 'amd64'
   docker_username:
     description: 'Docker Hub username for pushing images'
     required: false

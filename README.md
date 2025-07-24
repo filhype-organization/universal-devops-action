@@ -58,7 +58,7 @@ jobs:
       java_version: '21'              # Java version
       node_version: '22'              # Node.js version      
       build_type: 'legacy'           # 'legacy' or 'native' (for Quarkus)
-      build_platform: 'x86'          # 'x86' or 'arm64'
+      build_platform: 'amd64'          # 'amd64' or 'arm64'
       container_build: false         # Enable container builds
       docker_image_name: 'org/repo'  # Required if container_build is true
       build_options: ''               # Additional build options
@@ -275,7 +275,7 @@ Examples:
 | java_version | Java version | No | 21 |
 | node_version | Node.js version | No | 22 |
 | build_type | Build type for Java projects ('legacy' or 'native') | No | legacy |
-| build_platform | Target platform for containers ('x86' or 'arm64') | No | x86 |
+| build_platform | Target platform for containers ('amd64' or 'arm64') | No | amd64 |
 | container_build | Enable container builds | No | false |
 | docker_image_name | Name of your Docker image | Conditional* | N/A |
 | build_options | Additional build options | No | '' |
