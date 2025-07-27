@@ -114,7 +114,7 @@ jobs:
       
       - name: Get Context
         id: project-type
-        uses: filhype-organization/universal-devops-action/.github/actions/get-context@main
+        uses: filhype-organization/universal-devops-action/.github/actions/get-context@multi-build
   
   test:
     runs-on: ubuntu-latest
@@ -136,7 +136,7 @@ jobs:
 
       - name: Run Java Tests
         if: needs.get-context.outputs.java == 'true'
-        uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@main
+        uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@multi-build
         with:
           test_options: ${{ inputs.test_options }}
           java_version: ${{ inputs.java_version }}
@@ -160,7 +160,7 @@ jobs:
           echo "Full outputs: ${{ needs.get-context.outputs.outputs }}"
 
       - name: Run Angular Tests
-        uses: filhype-organization/universal-devops-action/.github/actions/test/angular-test@main
+        uses: filhype-organization/universal-devops-action/.github/actions/test/angular-test@multi-build
         with:
           node_version: ${{ inputs.node_version }}
           test_options: ${{ inputs.test_options }}
@@ -176,7 +176,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build Java Project
-        uses: filhype-organization/universal-devops-action/.github/actions/build/java-build@main
+        uses: filhype-organization/universal-devops-action/.github/actions/build/java-build@multi-build
         with:
           java_version: ${{ inputs.java_version }}
           build_options: ${{ inputs.build_options }}
@@ -198,7 +198,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build Angular Project
-        uses: filhype-organization/universal-devops-action/.github/actions/build/angular-build@main
+        uses: filhype-organization/universal-devops-action/.github/actions/build/angular-build@multi-build
         with:
           node_version: ${{ inputs.node_version }}
           build_options: ${{ inputs.build_options }}
@@ -217,7 +217,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Run Linters
-        uses: filhype-organization/universal-devops-action/.github/actions/lint@main
+        uses: filhype-organization/universal-devops-action/.github/actions/lint@multi-build
         with:
           sql_lint_path: ${{ inputs.sql_lint_path }}
           sql_lint_config: ${{ inputs.sql_lint_config }}
@@ -232,12 +232,12 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Run TruffleHog Secret Scanning
-        uses: filhype-organization/universal-devops-action/.github/actions/security/trufflehog@main
+        uses: filhype-organization/universal-devops-action/.github/actions/security/trufflehog@multi-build
         with:
           trufflehog_args: ${{ inputs.trufflehog_args }}
           
       - name: Run Trivy Vulnerability Scanning
-        uses: filhype-organization/universal-devops-action/.github/actions/security/trivy@main
+        uses: filhype-organization/universal-devops-action/.github/actions/security/trivy@multi-build
         with:
           severity: 'CRITICAL,HIGH'
           upload_sarif: 'true'
@@ -264,7 +264,7 @@ jobs:
           fetch-depth: 0
 
       - name: Build and Deploy MkDocs
-        uses: filhype-organization/universal-devops-action/.github/actions/mkdocs-build@main
+        uses: filhype-organization/universal-devops-action/.github/actions/mkdocs-build@multi-build
         with:
           python_version: ${{ inputs.python_version }}
           mkdocs_requirements: ${{ inputs.mkdocs_requirements }}
@@ -288,7 +288,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Setup Renovate Configuration
-        uses: filhype-organization/universal-devops-action/.github/actions/analysis/renovate@main
+        uses: filhype-organization/universal-devops-action/.github/actions/analysis/renovate@multi-build
         with:
           renovate_schedule: 'before 6am on monday'
           auto_merge_patch: 'true'

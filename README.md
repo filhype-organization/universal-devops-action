@@ -1,14 +1,10 @@
 # Universal DevOps Action
 
-<img src="asset/universal-github-action.png" alt="Universal GitHub Action" width="300" style="display: block; margin: 0 auto;"/>
+<div align="center">
+  <img src="asset/universal-github-action.png" alt="Universal GitHub Action" width="300"/>
+</div>
 
-<p></p>
-A reusable GitHub Actions workflow that provides a complete CI/CD pipeline with support for Java (Spring/- **Registry Authentication**: Optional (Docker Hub, GitHub Container Registry)
-- **Multi-arch Support**: Docker buildx with manifest creation for multiple platforms
-- **Emulation**: Cross-platform builds using QEMU when needed
-
-### GitHub Permissions for MkDocskus) and Angular projects. This workflow automatically detects your project type and executes the appropriate build, test, and quality check steps.
-</p>
+A reusable GitHub Actions workflow that provides a complete CI/CD pipeline with support for Java (Spring/Quarkus) and Angular projects. This workflow automatically detects your project type and executes the appropriate build, test, and quality check steps.
 
 ## Features
 
