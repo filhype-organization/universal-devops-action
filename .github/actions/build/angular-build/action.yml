@@ -11,9 +11,9 @@ inputs:
     required: false
     default: ''
   build_platform:
-    description: 'Target platform for container builds (arm64 or x86)'
+    description: 'Target platform for container builds (arm64 or amd64)'
     required: false
-    default: 'x86'
+    default: 'amd64'
   docker_username:
     description: 'Docker Hub username for pushing images'
     required: false
@@ -114,4 +114,35 @@ runs:
         platforms: linux/${{ inputs.build_platform }}
         push: true
         tags: |
-          ${{ inputs.docker_image_name }}:${{ env.version }}
+          ${{ inputs.docker_image_name }}:${{ env.version }}-${{ inputs.build_platform }}
+
+    - name: Create and push multi-arch manifest
+      if: inputs.container_build == 'true' && inputs.docker_username != '' && inputs.build_platform == 'amd64'
+      shell: bash
+      run: |
+        # Wait a bit to ensure all platform builds are pushed
+        sleep 10
+        
+        # Get all existing platforms for this version
+        PLATFORMS=""
+        if docker manifest inspect ${{ inputs.docker_image_name }}:${{ env.version }}-amd64 >/dev/null 2>&1; then
+          PLATFORMS="$PLATFORMS ${{ inputs.docker_image_name }}:${{ env.version }}-amd64"
+        fi
+        if docker manifest inspect ${{ inputs.docker_image_name }}:${{ env.version }}-arm64 >/dev/null 2>&1; then
+          PLATFORMS="$PLATFORMS ${{ inputs.docker_image_name }}:${{ env.version }}-arm64"
+        fi
+        
+        if [ -n "$PLATFORMS" ]; then
+          echo "Creating multi-arch manifest for platforms: $PLATFORMS"
+          docker manifest create ${{ inputs.docker_image_name }}:${{ env.version }} $PLATFORMS
+          docker manifest push ${{ inputs.docker_image_name }}:${{ env.version }}
+          
+          # Also create latest tag manifest if on main branch
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          if [ "$BRANCH_NAME" = "main" ] && [[ ! "${{ env.version }}" =~ "-snapshot" ]]; then
+            docker manifest create ${{ inputs.docker_image_name }}:latest $PLATFORMS
+            docker manifest push ${{ inputs.docker_image_name }}:latest
+          fi
+        else
+          echo "No platform images found, skipping manifest creation"
+        fi

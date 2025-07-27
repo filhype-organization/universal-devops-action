@@ -1,9 +1,13 @@
 # Universal DevOps Action
 
-<img src="asset/universal-github-action.png" alt="Universal GitHub Action" width="300" style="display: block; margin: auto;"/>
+<img src="asset/universal-github-action.png" alt="Universal GitHub Action" width="300" style="display: block; margin: 0 auto;"/>
 
 <p></p>
-A reusable GitHub Actions workflow that provides a complete CI/CD pipeline with support for Java (Spring/Quarkus) and Angular projects. This workflow automatically detects your project type and executes the appropriate build, test, and quality check steps.
+A reusable GitHub Actions workflow that provides a complete CI/CD pipeline with support for Java (Spring/- **Registry Authentication**: Optional (Docker Hub, GitHub Container Registry)
+- **Multi-arch Support**: Docker buildx with manifest creation for multiple platforms
+- **Emulation**: Cross-platform builds using QEMU when needed
+
+### GitHub Permissions for MkDocskus) and Angular projects. This workflow automatically detects your project type and executes the appropriate build, test, and quality check steps.
 </p>
 
 ## Features
@@ -58,7 +62,7 @@ jobs:
       java_version: '21'              # Java version
       node_version: '22'              # Node.js version      
       build_type: 'legacy'           # 'legacy' or 'native' (for Quarkus)
-      build_platform: 'amd64'          # 'amd64' or 'arm64'
+      build_platforms: ['amd64']     # Single platform: ['amd64'] or ['arm64'], Multi-arch: ['amd64', 'arm64']
       container_build: false         # Enable container builds
       docker_image_name: 'org/repo'  # Required if container_build is true
       build_options: ''               # Additional build options
@@ -84,6 +88,7 @@ jobs:
     uses: filhype-organization/universal-devops-action/.github/workflows/github-actions.yml@v1
     with:
       java_version: '21'
+      build_platforms: ['amd64']
       container_build: true
       docker_image_name: 'myorg/myapp'
     secrets:
@@ -120,6 +125,39 @@ jobs:
       contents: write
       pages: write
       id-token: write
+```
+
+### Multi-Architecture Native Build
+```yaml
+jobs:
+  build:
+    uses: filhype-organization/universal-devops-action/.github/workflows/github-actions.yml@v1
+    with:
+      java_version: '21'
+      build_type: 'native'
+      build_platforms: ['amd64', 'arm64']
+      container_build: true
+      docker_image_name: 'myorg/myapp'
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+```
+
+### Multi-Architecture Container Only
+```yaml
+jobs:
+  build:
+    uses: filhype-organization/universal-devops-action/.github/workflows/github-actions.yml@v1
+    with:
+      build_type: 'legacy'
+      build_platforms: ['amd64', 'arm64']
+      container_build: true
+      docker_image_name: 'myorg/myapp'
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 ```
 
 ## Workflow Details
@@ -219,12 +257,14 @@ The security workflow uses separate composite actions for better modularity:
 - **JDK**: Automatically installed (default: Java 21)
 - **Build Tools**: Maven or Gradle (auto-detected)
 - **Native Compilation**: Only available for Quarkus projects
-- **Architectures**: x86 (amd64) and arm64 (aarch64) for native builds
+- **Architectures**: Supports amd64 (x86_64) and arm64 (aarch64)
+- **Multi-arch Support**: Parallel builds when multiple platforms specified
 
 #### Angular Projects
 - **Node.js**: Automatically installed (default: Node 22)
 - **Package Manager**: npm (automatically used)
 - **Build Output**: Production-optimized builds
+- **Multi-arch Support**: JVM-based, works on all specified platforms
 
 #### MkDocs Projects
 - **Python**: Automatically installed (default: Python 3.x)
@@ -234,6 +274,9 @@ The security workflow uses separate composite actions for better modularity:
 
 #### Container Builds
 - **Docker**: Available on GitHub-hosted runners
+- **Registry Authentication**: Optional (Docker Hub, GitHub Container Registry)
+- **Multi-arch Support**: Docker buildx with manifest creation for multiple platforms
+- **Emulation**: Cross-platform builds using QEMU when needed
 - **Registry Authentication**: Optional (Docker Hub, GitHub Container Registry)
 - **Multi-arch**: Supported for both Java and Angular projects
 
@@ -275,7 +318,7 @@ Examples:
 | java_version | Java version | No | 21 |
 | node_version | Node.js version | No | 22 |
 | build_type | Build type for Java projects ('legacy' or 'native') | No | legacy |
-| build_platform | Target platform for containers ('amd64' or 'arm64') | No | amd64 |
+| build_platforms | Target platforms for builds (array: ['amd64'], ['arm64'], or ['amd64', 'arm64']) | No | ['amd64'] |
 | container_build | Enable container builds | No | false |
 | docker_image_name | Name of your Docker image | Conditional* | N/A |
 | build_options | Additional build options | No | '' |
@@ -292,11 +335,13 @@ Examples:
 
 \* Required if container_build is true
 
-**Note:** The `enable_java_build`, `enable_angular_build`, and `enable_mkdocs_build` parameters allow you to disable specific build jobs while still running lint and security checks. This is useful for:
-- Security-only pipelines
-- Quality checks without builds
-- Selective builds in monorepo scenarios
-- Documentation-only deployments
+**Note:** 
+- The `enable_java_build`, `enable_angular_build`, and `enable_mkdocs_build` parameters allow you to disable specific build jobs while still running lint and security checks. This is useful for:
+  - Security-only pipelines
+  - Quality checks without builds
+  - Selective builds in monorepo scenarios
+  - Documentation-only deployments
+- The `build_platforms` parameter accepts an array of platforms. For multi-architecture builds, specify multiple platforms: `['amd64', 'arm64']`
 
 ## Secrets
 
@@ -524,3 +569,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - ✅ Enhanced SARIF upload with fallback to artifacts
 - ✅ Added comprehensive debug logging
 - ✅ Ensured lint and security jobs run independently of build status
+- ✅ **Multi-architecture build support** for Java native and container images
+- ✅ **Docker multi-arch manifest** generation for seamless image pulling
+- ✅ **Parallel builds** with matrix strategy for multiple platforms
+- ✅ **Backward compatibility** with existing `build_platform` parameter
+- ✅ **Enhanced build_platforms parameter** supporting JSON arrays for multiple architectures
+- ✅ **Improved documentation** for multi-architecture builds and implementation details

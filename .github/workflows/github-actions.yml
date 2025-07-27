@@ -28,10 +28,11 @@ on:
         required: false
         type: string
         default: 'legacy'
-      build_platform:
-        description: 'Target platform for container builds (arm64 or x86)'
+      build_platforms:
+        description: 'Target platforms for builds (JSON array: ["amd64"], ["arm64"], or ["amd64", "arm64"])'
         required: false
         type: string
+        default: '["amd64"]'
       container_build:
         description: 'Whether to build and push container image for Angular'
         required: false
@@ -168,6 +169,9 @@ jobs:
     runs-on: ubuntu-latest    
     needs: [test, get-context]
     if: needs.get-context.outputs.java == 'true' && inputs.enable_java_build
+    strategy:
+      matrix:
+        platform: ${{ fromJSON(inputs.build_platforms || inputs.build_platform && format('["{0}"]', inputs.build_platform) || '["amd64"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -177,7 +181,7 @@ jobs:
           java_version: ${{ inputs.java_version }}
           build_options: ${{ inputs.build_options }}
           build_type: ${{ inputs.build_type }}
-          build_platform: ${{ inputs.build_platform }}
+          build_platform: ${{ matrix.platform }}
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
@@ -187,6 +191,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test-node, get-context]
     if: needs.get-context.outputs.angular == 'true' && inputs.enable_angular_build
+    strategy:
+      matrix:
+        platform: ${{ fromJSON(inputs.build_platforms || inputs.build_platform && format('["{0}"]', inputs.build_platform) || '["amd64"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -195,7 +202,7 @@ jobs:
         with:
           node_version: ${{ inputs.node_version }}
           build_options: ${{ inputs.build_options }}
-          build_platform: ${{ inputs.build_platform }}
+          build_platform: ${{ matrix.platform }}
           container_build: ${{ inputs.container_build }}
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
