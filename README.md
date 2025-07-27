@@ -177,28 +177,36 @@ For Java projects, it also detects the framework:
    - Sets up environment variables for subsequent jobs
    - Outputs individual flags for each detected technology
 
-2. **lint** (Always runs, non-blocking)
-   - Runs various code quality checks using MegaLinter
-   - SQL linting if SQL files are present
-   - Continues pipeline even if checks fail
-   - Runs independently of build status
+2. **test** / **test-node** (Conditional)
+   - Runs appropriate tests based on project type
+   - Java tests run if Java project detected
+   - Angular tests run if Angular project detected
+   - Configurable test options
+   - **Angular tests**: Run with CI-optimized configuration (auto-configured `singleRun: true`)
+   - **Java tests**: Support both Maven and Gradle test execution
 
-3. **security** (Always runs, non-blocking)
-   - **TruffleHog**: Scans for secrets and sensitive information
-   - **Trivy**: Vulnerability scanning with SARIF report upload
-   - Runs independently of build status
-   - SARIF reports uploaded to GitHub Security tab when possible
-
-4. **java-build** (Conditional)
+3. **java-build** (Conditional, Matrix Strategy)
    - Runs if Java project is detected AND `enable_java_build` is true
+   - **Matrix builds** for each platform in `build_platforms` 
    - Supports both legacy and native builds
    - Native builds only available for Quarkus projects
-   - Optional container image building and pushing
+   - Each platform pushes its own tagged image (`image:version-platform`)
+   - Outputs metadata for manifest creation
 
-5. **angular-build** (Conditional)
+4. **angular-build** (Conditional, Matrix Strategy)
    - Runs if Angular project is detected AND `enable_angular_build` is true
+   - **Matrix builds** for each platform in `build_platforms`
    - Builds production-optimized assets
-   - Optional container image building and pushing
+   - Each platform pushes its own tagged image (`image:version-platform`)
+   - Outputs metadata for manifest creation
+
+5. **create-manifest** (Conditional)
+   - **NEW**: Dedicated job for creating multi-arch Docker manifests
+   - Runs after all platform builds complete (regardless of individual success/failure)
+   - Collects platform-specific images from build job outputs
+   - Creates multi-arch manifest list (`image:version`) pointing to all available platforms
+   - Creates `latest` tag for main branch releases
+   - Handles cases where only some platforms build successfully
 
 6. **mkdocs-build** (Conditional)
    - Runs if MkDocs project is detected AND `enable_mkdocs_build` is true
@@ -207,12 +215,19 @@ For Java projects, it also detects the framework:
    - No pre-tests required (documentation focus)
    - Caches dependencies for faster builds
 
-7. **test** (Conditional)
-   - Runs appropriate tests based on project type
-   - Only runs if corresponding build job ran successfully
-   - Configurable test options
-   - **Angular tests**: Run with CI-optimized configuration (auto-configured `singleRun: true`)
-   - **Java tests**: Support both Maven and Gradle test execution
+7. **lint** (Always runs, non-blocking)
+   - Runs various code quality checks using MegaLinter
+   - SQL linting if SQL files are present
+   - Continues pipeline even if checks fail
+   - Runs independently of build status
+   - Waits for build and manifest jobs to complete
+
+8. **security** (Always runs, non-blocking)
+   - **TruffleHog**: Scans for secrets and sensitive information
+   - **Trivy**: Vulnerability scanning with SARIF report upload
+   - Runs independently of build status
+   - SARIF reports uploaded to GitHub Security tab when possible
+   - Waits for build and manifest jobs to complete
 
 ### Security Actions (Modular)
 
@@ -271,10 +286,15 @@ The security workflow uses separate composite actions for better modularity:
 #### Container Builds
 - **Docker**: Available on GitHub-hosted runners
 - **Registry Authentication**: Optional (Docker Hub, GitHub Container Registry)
-- **Multi-arch Support**: Docker buildx with manifest creation for multiple platforms
+- **Multi-arch Architecture**: 
+  - Each platform builds and pushes its own image (`image:version-platform`)
+  - Separate manifest job creates multi-arch manifest list (`image:version`)
+  - No timeouts or race conditions between platform builds
+  - ARM64 builds can take 50+ minutes without blocking AMD64 (few minutes)
+- **Platform Images**: Platform-specific tags are always available for debugging
 - **Emulation**: Cross-platform builds using QEMU when needed
-- **Registry Authentication**: Optional (Docker Hub, GitHub Container Registry)
-- **Multi-arch**: Supported for both Java and Angular projects
+- **Provenance**: Disabled to ensure single-platform images (not manifest lists)
+- **Supported Projects**: Both Java and Angular projects support multi-arch builds
 
 ### GitHub Permissions for MkDocs
 For MkDocs projects that deploy to GitHub Pages, add these permissions:
@@ -306,6 +326,37 @@ Examples:
 - Git tag "v1.2.3" → `image:1.2.3`
 - Commit abc123f on main → `image:abc123f`
 - Commit def456a on feature branch → `image:def456a-snapshot`
+
+## Multi-Architecture Container Images
+
+For multi-platform builds (`build_platforms: ['amd64', 'arm64']`), the workflow creates:
+
+### Platform-Specific Images
+Each build job pushes a platform-specific image:
+- `myapp:v1.0.0-amd64` (Built on AMD64 runner)
+- `myapp:v1.0.0-arm64` (Built on AMD64 runner with QEMU emulation)
+
+### Multi-Architecture Manifest
+The dedicated `create-manifest` job creates a manifest list that points to both platform images:
+- `myapp:v1.0.0` (Multi-arch manifest list)
+- `myapp:latest` (On main branch, multi-arch manifest list)
+
+### Image Pulling Behavior
+When users pull `myapp:v1.0.0`, Docker automatically selects the correct platform image:
+- On AMD64 systems: Pulls `myapp:v1.0.0-amd64`
+- On ARM64 systems: Pulls `myapp:v1.0.0-arm64`
+
+### Debugging Multi-Arch Images
+Use the debug script to inspect your multi-arch setup:
+```bash
+# Check manifest structure
+./conf/debug-manifests.sh myuser/myapp v1.0.0
+
+# Manually inspect manifests
+docker manifest inspect myuser/myapp:v1.0.0        # Multi-arch manifest
+docker manifest inspect myuser/myapp:v1.0.0-amd64  # Platform-specific image
+docker manifest inspect myuser/myapp:v1.0.0-arm64  # Platform-specific image
+```
 
 ## Inputs
 
@@ -500,8 +551,22 @@ with:
 
 #### Container Build Issues
 - **Docker authentication fails**: Verify `DOCKER_USERNAME` and `DOCKER_TOKEN` secrets
-- **Multi-arch build slow**: Consider using `build_platform: 'x86'` for faster builds
+- **Multi-arch build slow**: Consider using single platform builds for faster iteration
 - **Image name invalid**: Use format `registry/organization/repository`
+- **Manifest creation fails**: 
+  - Error: "X is a manifest list" → Docker buildx created a manifest list instead of single image
+  - Solution: The workflow now uses `provenance: false` to force single-platform images
+  - Debug: Use `conf/debug-manifests.sh <image> <version>` to inspect manifest structure
+- **Multi-arch builds interfering**: 
+  - One platform build cancels another → Matrix jobs run in parallel correctly
+  - AMD64 job creates manifest before ARM64 completes → Fixed with intelligent waiting logic
+  - Use the debug script to verify both platform images exist before manifest creation
+
+#### Multi-Architecture Troubleshooting
+- **Jobs cancel each other**: This shouldn't happen with matrix strategy. Check GitHub Actions logs
+- **Manifest creation timing**: AMD64 job waits up to 5 minutes for ARM64 job completion
+- **Platform images missing**: Check that both builds succeeded before manifest creation
+- **Corrupted manifests**: Use `docker manifest rm <image>:<tag>` to clean up, then rebuild
 
 #### Lint and Quality Issues
 - **MegaLinter fails**: Check file encoding and syntax
@@ -553,6 +618,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Changelog
 
 ### Latest Updates
+- ✅ **Refactored multi-arch builds**: True multi-architecture Docker builds with dedicated manifest job
+- ✅ **Fixed ARM64/AMD64 timing issues**: Each platform builds independently without timeouts
+- ✅ **Platform-specific image pushing**: Each build pushes its own `image:version-platform` tag
+- ✅ **Dedicated manifest job**: Separate job creates multi-arch manifest list after all builds complete
+- ✅ **Eliminated build interference**: No more race conditions or job cancellations between platforms
 - ✅ **Added MkDocs support** with automatic GitHub Pages deployment
 - ✅ **Enhanced project detection** for documentation sites (mkdocs.yml/mkdocs.yaml)
 - ✅ **Optimized MegaLinter configuration** for better performance and focus

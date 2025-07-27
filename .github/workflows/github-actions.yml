@@ -172,10 +172,17 @@ jobs:
     strategy:
       matrix:
         platform: ${{ fromJSON(inputs.build_platforms || inputs.build_platform && format('["{0}"]', inputs.build_platform) || '["amd64"]') }}
+    outputs:
+      docker_image_tag_amd64: ${{ steps.collect-amd64.outputs.docker_image_tag }}
+      docker_image_tag_arm64: ${{ steps.collect-arm64.outputs.docker_image_tag }}
+      docker_image_base: ${{ steps.collect-metadata.outputs.docker_image_base }}
+      version: ${{ steps.collect-metadata.outputs.version }}
+      platforms_built: ${{ steps.collect-metadata.outputs.platforms_built }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build Java Project
+        id: build
         uses: filhype-organization/universal-devops-action/.github/actions/build/java-build@multi-build
         with:
           java_version: ${{ inputs.java_version }}
@@ -186,6 +193,30 @@ jobs:
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
           is_quarkus: ${{ needs.get-context.outputs.quarkus }}
+      
+      # Collect outputs by platform for the manifest job
+      - name: Collect AMD64 metadata
+        id: collect-amd64
+        if: matrix.platform == 'amd64' && steps.build.outputs.docker_image_tag != ''
+        shell: bash
+        run: |
+          echo "docker_image_tag=${{ steps.build.outputs.docker_image_tag }}" >> $GITHUB_OUTPUT
+          
+      - name: Collect ARM64 metadata
+        id: collect-arm64
+        if: matrix.platform == 'arm64' && steps.build.outputs.docker_image_tag != ''
+        shell: bash
+        run: |
+          echo "docker_image_tag=${{ steps.build.outputs.docker_image_tag }}" >> $GITHUB_OUTPUT
+          
+      - name: Collect general metadata
+        id: collect-metadata
+        if: steps.build.outputs.docker_image_base != ''
+        shell: bash
+        run: |
+          echo "docker_image_base=${{ steps.build.outputs.docker_image_base }}" >> $GITHUB_OUTPUT
+          echo "version=${{ steps.build.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "platforms_built=${{ matrix.platform }}" >> $GITHUB_OUTPUT
 
   angular-build:
     runs-on: ubuntu-latest
@@ -194,10 +225,17 @@ jobs:
     strategy:
       matrix:
         platform: ${{ fromJSON(inputs.build_platforms || inputs.build_platform && format('["{0}"]', inputs.build_platform) || '["amd64"]') }}
+    outputs:
+      docker_image_tag_amd64: ${{ steps.collect-amd64.outputs.docker_image_tag }}
+      docker_image_tag_arm64: ${{ steps.collect-arm64.outputs.docker_image_tag }}
+      docker_image_base: ${{ steps.collect-metadata.outputs.docker_image_base }}
+      version: ${{ steps.collect-metadata.outputs.version }}
+      platforms_built: ${{ steps.collect-metadata.outputs.platforms_built }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build Angular Project
+        id: build
         uses: filhype-organization/universal-devops-action/.github/actions/build/angular-build@multi-build
         with:
           node_version: ${{ inputs.node_version }}
@@ -208,9 +246,149 @@ jobs:
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
           
+      # Collect outputs by platform for the manifest job
+      - name: Collect AMD64 metadata
+        id: collect-amd64
+        if: matrix.platform == 'amd64' && steps.build.outputs.docker_image_tag != ''
+        shell: bash
+        run: |
+          echo "docker_image_tag=${{ steps.build.outputs.docker_image_tag }}" >> $GITHUB_OUTPUT
+          
+      - name: Collect ARM64 metadata
+        id: collect-arm64
+        if: matrix.platform == 'arm64' && steps.build.outputs.docker_image_tag != ''
+        shell: bash
+        run: |
+          echo "docker_image_tag=${{ steps.build.outputs.docker_image_tag }}" >> $GITHUB_OUTPUT
+          
+      - name: Collect general metadata
+        id: collect-metadata
+        if: steps.build.outputs.docker_image_base != ''
+        shell: bash
+        run: |
+          echo "docker_image_base=${{ steps.build.outputs.docker_image_base }}" >> $GITHUB_OUTPUT
+          echo "version=${{ steps.build.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "platforms_built=${{ matrix.platform }}" >> $GITHUB_OUTPUT
+
+  create-manifest:
+    runs-on: ubuntu-latest
+    needs: [java-build, angular-build, get-context]
+    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success') && (needs.java-build.outputs.docker_image_base != '' || needs.angular-build.outputs.docker_image_base != '')
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Create multi-arch manifest
+        shell: bash
+        run: |
+          # Determine which project built successfully and get metadata
+          if [ "${{ needs.java-build.result }}" == "success" ] && [ -n "${{ needs.java-build.outputs.docker_image_base }}" ]; then
+            DOCKER_IMAGE_BASE="${{ needs.java-build.outputs.docker_image_base }}"
+            VERSION="${{ needs.java-build.outputs.version }}"
+            AMD64_TAG="${{ needs.java-build.outputs.docker_image_tag_amd64 }}"
+            ARM64_TAG="${{ needs.java-build.outputs.docker_image_tag_arm64 }}"
+            PROJECT_TYPE="Java"
+          elif [ "${{ needs.angular-build.result }}" == "success" ] && [ -n "${{ needs.angular-build.outputs.docker_image_base }}" ]; then
+            DOCKER_IMAGE_BASE="${{ needs.angular-build.outputs.docker_image_base }}"
+            VERSION="${{ needs.angular-build.outputs.version }}"
+            AMD64_TAG="${{ needs.angular-build.outputs.docker_image_tag_amd64 }}"
+            ARM64_TAG="${{ needs.angular-build.outputs.docker_image_tag_arm64 }}"
+            PROJECT_TYPE="Angular"
+          else
+            echo "⚠️ No successful builds with Docker images found, skipping manifest creation"
+            exit 0
+          fi
+          
+          echo "Creating multi-arch manifest for $PROJECT_TYPE project"
+          echo "Base image: $DOCKER_IMAGE_BASE"
+          echo "Version: $VERSION"
+          
+          # Function to check if an image exists and is a simple image (not a manifest list)
+          check_image_exists() {
+            local image=$1
+            echo "Checking if image exists: $image"
+            
+            # Try to get the manifest
+            if docker manifest inspect "$image" >/dev/null 2>&1; then
+              echo "✅ Image $image exists"
+              return 0
+            else
+              echo "❌ Image $image does not exist"
+              return 1
+            fi
+          }
+          
+          # Collect available platform images
+          PLATFORM_IMAGES=""
+          PLATFORMS_FOUND=""
+          
+          if [ -n "$AMD64_TAG" ] && check_image_exists "$AMD64_TAG"; then
+            PLATFORM_IMAGES="$PLATFORM_IMAGES $AMD64_TAG"
+            PLATFORMS_FOUND="$PLATFORMS_FOUND amd64"
+            echo "✅ AMD64 image found: $AMD64_TAG"
+          fi
+          
+          if [ -n "$ARM64_TAG" ] && check_image_exists "$ARM64_TAG"; then
+            PLATFORM_IMAGES="$PLATFORM_IMAGES $ARM64_TAG"
+            PLATFORMS_FOUND="$PLATFORMS_FOUND arm64"
+            echo "✅ ARM64 image found: $ARM64_TAG"
+          fi
+          
+          # Create manifest only if we have at least one platform image
+          if [ -n "$PLATFORM_IMAGES" ]; then
+            echo "Creating multi-arch manifest for platforms:$PLATFORMS_FOUND"
+            echo "Platform images: $PLATFORM_IMAGES"
+            
+            # Remove any existing manifest first
+            docker manifest rm "$DOCKER_IMAGE_BASE" 2>/dev/null || true
+            
+            # Create new manifest
+            echo "Creating manifest: docker manifest create $DOCKER_IMAGE_BASE $PLATFORM_IMAGES"
+            docker manifest create "$DOCKER_IMAGE_BASE" $PLATFORM_IMAGES
+            
+            echo "Pushing manifest: docker manifest push $DOCKER_IMAGE_BASE"
+            docker manifest push "$DOCKER_IMAGE_BASE"
+            
+            echo "✅ Multi-arch manifest created successfully for $DOCKER_IMAGE_BASE"
+            echo "🎯 Platforms included:$PLATFORMS_FOUND"
+            
+            # Create latest tag manifest if on main branch and not a snapshot
+            BRANCH_NAME=${GITHUB_REF#refs/heads/}
+            if [ "$BRANCH_NAME" = "main" ] && [[ ! "$VERSION" =~ "-snapshot" ]]; then
+              LATEST_TAG="$(echo $DOCKER_IMAGE_BASE | cut -d: -f1):latest"
+              echo "Creating latest tag manifest: $LATEST_TAG"
+              
+              docker manifest rm "$LATEST_TAG" 2>/dev/null || true
+              docker manifest create "$LATEST_TAG" $PLATFORM_IMAGES
+              docker manifest push "$LATEST_TAG"
+              echo "✅ Latest tag manifest created successfully: $LATEST_TAG"
+            fi
+            
+            echo ""
+            echo "📋 Manifest Summary:"
+            echo "  Project: $PROJECT_TYPE"
+            echo "  Main tag: $DOCKER_IMAGE_BASE"
+            echo "  Platforms:$PLATFORMS_FOUND"
+            echo "  Platform images: $PLATFORM_IMAGES"
+            if [ "$BRANCH_NAME" = "main" ] && [[ ! "$VERSION" =~ "-snapshot" ]]; then
+              echo "  Latest tag: $LATEST_TAG"
+            fi
+          else
+            echo "⚠️ No platform images found, skipping manifest creation"
+            echo "Expected AMD64: $AMD64_TAG"
+            echo "Expected ARM64: $ARM64_TAG"
+            exit 1
+          fi
+          
   lint:
     runs-on: ubuntu-latest
-    needs: [get-context, java-build, angular-build]
+    needs: [get-context, java-build, angular-build, create-manifest]
     if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
     continue-on-error: true
     steps:
@@ -225,7 +403,7 @@ jobs:
           
   security:
     runs-on: ubuntu-latest
-    needs: [get-context, java-build, angular-build]
+    needs: [get-context, java-build, angular-build, create-manifest]
     if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
     steps:
       - name: Checkout code

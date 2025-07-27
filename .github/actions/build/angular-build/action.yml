@@ -31,6 +31,20 @@ inputs:
     description: 'Override version tag (takes precedence over Git tags and commit SHA)'
     required: false
 
+outputs:
+  docker_image_tag:
+    description: 'The full Docker image tag that was pushed (including platform suffix)'
+    value: ${{ steps.save-metadata.outputs.docker_image_tag }}
+  docker_image_base:
+    description: 'The base Docker image name without platform suffix'
+    value: ${{ steps.save-metadata.outputs.docker_image_base }}
+  platform:
+    description: 'The platform this build was for'
+    value: ${{ steps.save-metadata.outputs.platform }}
+  version:
+    description: 'The version tag used for this build'
+    value: ${{ steps.save-metadata.outputs.version }}
+
 runs:
   using: composite
   steps:
@@ -113,36 +127,16 @@ runs:
         file: Dockerfile
         platforms: linux/${{ inputs.build_platform }}
         push: true
+        provenance: false  # Disable provenance to avoid manifest lists
         tags: |
           ${{ inputs.docker_image_name }}:${{ env.version }}-${{ inputs.build_platform }}
 
-    - name: Create and push multi-arch manifest
-      if: inputs.container_build == 'true' && inputs.docker_username != '' && inputs.build_platform == 'amd64'
+    - name: Save build metadata
+      if: inputs.container_build == 'true' && inputs.docker_username != ''
+      id: save-metadata
       shell: bash
       run: |
-        # Wait a bit to ensure all platform builds are pushed
-        sleep 10
-        
-        # Get all existing platforms for this version
-        PLATFORMS=""
-        if docker manifest inspect ${{ inputs.docker_image_name }}:${{ env.version }}-amd64 >/dev/null 2>&1; then
-          PLATFORMS="$PLATFORMS ${{ inputs.docker_image_name }}:${{ env.version }}-amd64"
-        fi
-        if docker manifest inspect ${{ inputs.docker_image_name }}:${{ env.version }}-arm64 >/dev/null 2>&1; then
-          PLATFORMS="$PLATFORMS ${{ inputs.docker_image_name }}:${{ env.version }}-arm64"
-        fi
-        
-        if [ -n "$PLATFORMS" ]; then
-          echo "Creating multi-arch manifest for platforms: $PLATFORMS"
-          docker manifest create ${{ inputs.docker_image_name }}:${{ env.version }} $PLATFORMS
-          docker manifest push ${{ inputs.docker_image_name }}:${{ env.version }}
-          
-          # Also create latest tag manifest if on main branch
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          if [ "$BRANCH_NAME" = "main" ] && [[ ! "${{ env.version }}" =~ "-snapshot" ]]; then
-            docker manifest create ${{ inputs.docker_image_name }}:latest $PLATFORMS
-            docker manifest push ${{ inputs.docker_image_name }}:latest
-          fi
-        else
-          echo "No platform images found, skipping manifest creation"
-        fi
+        echo "docker_image_tag=${{ inputs.docker_image_name }}:${{ env.version }}-${{ inputs.build_platform }}" >> $GITHUB_OUTPUT
+        echo "docker_image_base=${{ inputs.docker_image_name }}:${{ env.version }}" >> $GITHUB_OUTPUT
+        echo "platform=${{ inputs.build_platform }}" >> $GITHUB_OUTPUT
+        echo "version=${{ env.version }}" >> $GITHUB_OUTPUT
