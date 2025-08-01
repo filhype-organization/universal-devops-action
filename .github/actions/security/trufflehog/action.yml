@@ -11,7 +11,7 @@ runs:
   using: composite
   steps:
     - name: Secret Scanning with TruffleHog
-      uses: trufflesecurity/trufflehog@multi-build
+      uses: trufflesecurity/trufflehog@main
       with:
         extra_args: ${{ inputs.trufflehog_args }}
 
