@@ -338,34 +338,6 @@ jobs:
             echo "Expected base name: ${{ inputs.docker_image_name }}:${VERSION}-{platform}"
             exit 1
           fi
-            
-            # Create latest tag manifest if on main branch and not a snapshot
-            BRANCH_NAME=${GITHUB_REF#refs/heads/}
-            if [ "$BRANCH_NAME" = "main" ] && [[ ! "$VERSION" =~ "-snapshot" ]]; then
-              LATEST_TAG="$(echo $DOCKER_IMAGE_BASE | cut -d: -f1):latest"
-              echo "Creating latest tag manifest: $LATEST_TAG"
-              
-              docker manifest rm "$LATEST_TAG" 2>/dev/null || true
-              docker manifest create "$LATEST_TAG" $PLATFORM_IMAGES
-              docker manifest push "$LATEST_TAG"
-              echo "✅ Latest tag manifest created successfully: $LATEST_TAG"
-            fi
-            
-            echo ""
-            echo "📋 Manifest Summary:"
-            echo "  Project: $PROJECT_TYPE"
-            echo "  Main tag: $DOCKER_IMAGE_BASE"
-            echo "  Platforms:$PLATFORMS_FOUND"
-            echo "  Platform images: $PLATFORM_IMAGES"
-            if [ "$BRANCH_NAME" = "main" ] && [[ ! "$VERSION" =~ "-snapshot" ]]; then
-              echo "  Latest tag: $LATEST_TAG"
-            fi
-          else
-            echo "⚠️ No platform images found, skipping manifest creation"
-            echo "Expected AMD64: $AMD64_TAG"
-            echo "Expected ARM64: $ARM64_TAG"
-            exit 1
-          fi
           
   lint:
     runs-on: ubuntu-latest
