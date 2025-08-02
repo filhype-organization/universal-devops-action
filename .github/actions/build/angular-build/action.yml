@@ -11,9 +11,9 @@ inputs:
     required: false
     default: ''
   build_platform:
-    description: 'Target platform for container builds (arm64 or x86)'
+    description: 'Target platform for container builds (arm64 or amd64)'
     required: false
-    default: 'x86'
+    default: 'amd64'
   docker_username:
     description: 'Docker Hub username for pushing images'
     required: false
@@ -30,6 +30,20 @@ inputs:
   tag:
     description: 'Override version tag (takes precedence over Git tags and commit SHA)'
     required: false
+
+outputs:
+  docker_image_tag:
+    description: 'The full Docker image tag that was pushed (including platform suffix)'
+    value: ${{ steps.save-metadata.outputs.docker_image_tag }}
+  docker_image_base:
+    description: 'The base Docker image name without platform suffix'
+    value: ${{ steps.save-metadata.outputs.docker_image_base }}
+  platform:
+    description: 'The platform this build was for'
+    value: ${{ steps.save-metadata.outputs.platform }}
+  version:
+    description: 'The version tag used for this build'
+    value: ${{ steps.save-metadata.outputs.version }}
 
 runs:
   using: composite
@@ -113,5 +127,16 @@ runs:
         file: Dockerfile
         platforms: linux/${{ inputs.build_platform }}
         push: true
+        provenance: false  # Disable provenance to avoid manifest lists
         tags: |
-          ${{ inputs.docker_image_name }}:${{ env.version }}
+          ${{ inputs.docker_image_name }}:${{ env.version }}-${{ inputs.build_platform }}
+
+    - name: Save build metadata
+      if: inputs.container_build == 'true' && inputs.docker_username != ''
+      id: save-metadata
+      shell: bash
+      run: |
+        echo "docker_image_tag=${{ inputs.docker_image_name }}:${{ env.version }}-${{ inputs.build_platform }}" >> $GITHUB_OUTPUT
+        echo "docker_image_base=${{ inputs.docker_image_name }}:${{ env.version }}" >> $GITHUB_OUTPUT
+        echo "platform=${{ inputs.build_platform }}" >> $GITHUB_OUTPUT
+        echo "version=${{ env.version }}" >> $GITHUB_OUTPUT

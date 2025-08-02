@@ -28,10 +28,11 @@ on:
         required: false
         type: string
         default: 'legacy'
-      build_platform:
-        description: 'Target platform for container builds (arm64 or x86)'
+      build_platforms:
+        description: 'Target platforms for builds (JSON array: ["amd64"], ["arm64"], or ["amd64", "arm64"])'
         required: false
         type: string
+        default: '["amd64"]'
       container_build:
         description: 'Whether to build and push container image for Angular'
         required: false
@@ -54,6 +55,10 @@ on:
         default: '--results=verified,unknown'
       docker_image_name:
         description: 'Docker image name (required for container builds)'
+        required: false
+        type: string
+      tag:
+        description: 'Override version tag for Docker images'
         required: false
         type: string
       enable_java_build:
@@ -113,7 +118,7 @@ jobs:
       
       - name: Get Context
         id: project-type
-        uses: filhype-organization/universal-devops-action/.github/actions/get-context@main
+        uses: filhype-organization/universal-devops-action/.github/actions/get-context@multi-build
   
   test:
     runs-on: ubuntu-latest
@@ -135,7 +140,7 @@ jobs:
 
       - name: Run Java Tests
         if: needs.get-context.outputs.java == 'true'
-        uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@main
+        uses: filhype-organization/universal-devops-action/.github/actions/test/java-test@multi-build
         with:
           test_options: ${{ inputs.test_options }}
           java_version: ${{ inputs.java_version }}
@@ -159,7 +164,7 @@ jobs:
           echo "Full outputs: ${{ needs.get-context.outputs.outputs }}"
 
       - name: Run Angular Tests
-        uses: filhype-organization/universal-devops-action/.github/actions/test/angular-test@main
+        uses: filhype-organization/universal-devops-action/.github/actions/test/angular-test@multi-build
         with:
           node_version: ${{ inputs.node_version }}
           test_options: ${{ inputs.test_options }}
@@ -168,49 +173,182 @@ jobs:
     runs-on: ubuntu-latest    
     needs: [test, get-context]
     if: needs.get-context.outputs.java == 'true' && inputs.enable_java_build
+    strategy:
+      matrix:
+        platform: ${{ fromJSON(inputs.build_platforms || '["amd64"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build Java Project
-        uses: filhype-organization/universal-devops-action/.github/actions/build/java-build@main
+        id: build
+        uses: filhype-organization/universal-devops-action/.github/actions/build/java-build@multi-build
         with:
           java_version: ${{ inputs.java_version }}
           build_options: ${{ inputs.build_options }}
           build_type: ${{ inputs.build_type }}
-          build_platform: ${{ inputs.build_platform }}
+          build_platform: ${{ matrix.platform }}
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
           is_quarkus: ${{ needs.get-context.outputs.quarkus }}
+          tag: ${{ inputs.tag }}
 
   angular-build:
     runs-on: ubuntu-latest
     needs: [test-node, get-context]
     if: needs.get-context.outputs.angular == 'true' && inputs.enable_angular_build
+    strategy:
+      matrix:
+        platform: ${{ fromJSON(inputs.build_platforms || '["amd64"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build Angular Project
-        uses: filhype-organization/universal-devops-action/.github/actions/build/angular-build@main
+        id: build
+        uses: filhype-organization/universal-devops-action/.github/actions/build/angular-build@multi-build
         with:
           node_version: ${{ inputs.node_version }}
           build_options: ${{ inputs.build_options }}
-          build_platform: ${{ inputs.build_platform }}
+          build_platform: ${{ matrix.platform }}
           container_build: ${{ inputs.container_build }}
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
+          tag: ${{ inputs.tag }}
+
+  create-manifest:
+    runs-on: ubuntu-latest
+    needs: [java-build, angular-build, get-context]
+    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success') && inputs.container_build == true && inputs.docker_image_name != ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Create multi-arch manifest
+        shell: bash
+        run: |
+          # Get version information
+          if [ -n "${{ inputs.tag }}" ]; then
+            VERSION="${{ inputs.tag }}"
+          else
+            # Check if we're on a tag
+            if [[ $GITHUB_REF == refs/tags/* ]]; then
+              VERSION=${GITHUB_REF#refs/tags/v}
+            else
+              # Use short commit SHA
+              VERSION=$(git rev-parse --short HEAD)
+            fi
+
+            # Add snapshot suffix if not on main branch
+            BRANCH_NAME=${GITHUB_REF#refs/heads/}
+            if [ "$BRANCH_NAME" != "main" ]; then
+              VERSION="${VERSION}-snapshot"
+            fi
+          fi
+          
+          DOCKER_IMAGE_BASE="${{ inputs.docker_image_name }}:${VERSION}"
+          
+          echo "Creating multi-arch manifest for image: $DOCKER_IMAGE_BASE"
+          echo "Version: $VERSION"
+          
+          # Function to check if an image exists
+          check_image_exists() {
+            local image=$1
+            echo "Checking if image exists: $image"
+            
+            # Try to get the manifest
+            if docker manifest inspect "$image" >/dev/null 2>&1; then
+              echo "✅ Image $image exists"
+              return 0
+            else
+              echo "❌ Image $image does not exist"
+              return 1
+            fi
+          }
+          
+          # Build platform-specific image names
+          PLATFORMS_TO_CHECK=(${{ join(fromJSON(inputs.build_platforms || '["amd64"]'), ' ') }})
+          
+          # Collect available platform images
+          PLATFORM_IMAGES=""
+          PLATFORMS_FOUND=""
+          
+          for platform in "${PLATFORMS_TO_CHECK[@]}"; do
+            PLATFORM_TAG="${{ inputs.docker_image_name }}:${VERSION}-${platform}"
+            
+            if check_image_exists "$PLATFORM_TAG"; then
+              PLATFORM_IMAGES="$PLATFORM_IMAGES $PLATFORM_TAG"
+              PLATFORMS_FOUND="$PLATFORMS_FOUND $platform"
+              echo "✅ Platform $platform image found: $PLATFORM_TAG"
+            else
+              echo "⚠️ Platform $platform image not found: $PLATFORM_TAG"
+            fi
+          done
+          
+          # Create manifest only if we have at least one platform image
+          if [ -n "$PLATFORM_IMAGES" ]; then
+            echo "Creating multi-arch manifest for platforms:$PLATFORMS_FOUND"
+            echo "Platform images: $PLATFORM_IMAGES"
+            
+            # Remove any existing manifest first
+            docker manifest rm "$DOCKER_IMAGE_BASE" 2>/dev/null || true
+            
+            # Create new manifest
+            echo "Creating manifest: docker manifest create $DOCKER_IMAGE_BASE $PLATFORM_IMAGES"
+            docker manifest create "$DOCKER_IMAGE_BASE" $PLATFORM_IMAGES
+            
+            echo "Pushing manifest: docker manifest push $DOCKER_IMAGE_BASE"
+            docker manifest push "$DOCKER_IMAGE_BASE"
+            
+            echo "✅ Multi-arch manifest created successfully for $DOCKER_IMAGE_BASE"
+            echo "🎯 Platforms included:$PLATFORMS_FOUND"
+            
+            # Create latest tag manifest if on main branch and not a snapshot
+            BRANCH_NAME=${GITHUB_REF#refs/heads/}
+            if [ "$BRANCH_NAME" = "main" ] && [[ ! "$VERSION" =~ "-snapshot" ]]; then
+              LATEST_TAG="${{ inputs.docker_image_name }}:latest"
+              echo "Creating latest tag manifest: $LATEST_TAG"
+              
+              docker manifest rm "$LATEST_TAG" 2>/dev/null || true
+              docker manifest create "$LATEST_TAG" $PLATFORM_IMAGES
+              docker manifest push "$LATEST_TAG"
+              echo "✅ Latest tag manifest created successfully: $LATEST_TAG"
+            fi
+            
+            echo ""
+            echo "📋 Manifest Summary:"
+            echo "  Main tag: $DOCKER_IMAGE_BASE"
+            echo "  Platforms:$PLATFORMS_FOUND"
+            echo "  Platform images: $PLATFORM_IMAGES"
+            if [ "$BRANCH_NAME" = "main" ] && [[ ! "$VERSION" =~ "-snapshot" ]]; then
+              echo "  Latest tag: ${{ inputs.docker_image_name }}:latest"
+            fi
+          else
+            echo "⚠️ No platform images found, skipping manifest creation"
+            echo "Expected platforms: ${PLATFORMS_TO_CHECK[*]}"
+            echo "Expected base name: ${{ inputs.docker_image_name }}:${VERSION}-{platform}"
+            exit 1
+          fi
           
   lint:
     runs-on: ubuntu-latest
-    needs: [get-context, java-build, angular-build]
+    needs: [get-context, java-build, angular-build, create-manifest]
     if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
     continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Run Linters
-        uses: filhype-organization/universal-devops-action/.github/actions/lint@main
+        uses: filhype-organization/universal-devops-action/.github/actions/lint@multi-build
         with:
           sql_lint_path: ${{ inputs.sql_lint_path }}
           sql_lint_config: ${{ inputs.sql_lint_config }}
@@ -218,19 +356,19 @@ jobs:
           
   security:
     runs-on: ubuntu-latest
-    needs: [get-context, java-build, angular-build]
+    needs: [get-context, java-build, angular-build, create-manifest]
     if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         
       - name: Run TruffleHog Secret Scanning
-        uses: filhype-organization/universal-devops-action/.github/actions/security/trufflehog@main
+        uses: filhype-organization/universal-devops-action/.github/actions/security/trufflehog@multi-build
         with:
           trufflehog_args: ${{ inputs.trufflehog_args }}
           
       - name: Run Trivy Vulnerability Scanning
-        uses: filhype-organization/universal-devops-action/.github/actions/security/trivy@main
+        uses: filhype-organization/universal-devops-action/.github/actions/security/trivy@multi-build
         with:
           severity: 'CRITICAL,HIGH'
           upload_sarif: 'true'
@@ -257,7 +395,7 @@ jobs:
           fetch-depth: 0
 
       - name: Build and Deploy MkDocs
-        uses: filhype-organization/universal-devops-action/.github/actions/mkdocs-build@main
+        uses: filhype-organization/universal-devops-action/.github/actions/mkdocs-build@multi-build
         with:
           python_version: ${{ inputs.python_version }}
           mkdocs_requirements: ${{ inputs.mkdocs_requirements }}
@@ -281,7 +419,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Setup Renovate Configuration
-        uses: filhype-organization/universal-devops-action/.github/actions/analysis/renovate@main
+        uses: filhype-organization/universal-devops-action/.github/actions/analysis/renovate@multi-build
         with:
           renovate_schedule: 'before 6am on monday'
           auto_merge_patch: 'true'
