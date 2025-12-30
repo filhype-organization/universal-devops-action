@@ -110,7 +110,7 @@ runs:
       uses: actions/upload-artifact@v6
       with:
         name: artifact-java-${{ inputs.build_platform }}
-        path: .
+        path: target
 
     - name: Set up QEMU
       if: inputs.build_type == 'native' && inputs.is_quarkus == 'true' && inputs.docker_username != ''
@@ -155,7 +155,7 @@ runs:
       if: inputs.build_type == 'native' && inputs.is_quarkus == 'true' && inputs.docker_username != ''
       uses: docker/build-push-action@v6
       with:
-        context: ./target/
+        context: .
         file: ./src/main/docker/Dockerfile.native-micro
         platforms: linux/${{ inputs.build_platform }}
         push: true
