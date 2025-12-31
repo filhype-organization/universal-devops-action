@@ -22,6 +22,7 @@ runs:
   using: composite
   steps:
     - name: MegaLinter
+      id: megalinter
       uses: oxsecurity/megalinter@v7
       continue-on-error: true
       env:
@@ -61,6 +62,7 @@ runs:
             - REPOSITORY_SYFT
 
     - name: Run SQL Lint
+      id: sql_lint
       if: hashFiles('**/*.sql')
       uses: yu-iskw/action-sqlfluff@v4
       continue-on-error: true
@@ -71,3 +73,13 @@ runs:
         sqlfluff_command: "fix"
         config: "${{ github.workspace }}/${{ inputs.sql_lint_config }}"
         paths: "${{ github.workspace }}/${{ inputs.sql_lint_path }}"
+
+    - name: Warn if MegaLinter failed
+      if: steps.megalinter.outcome == 'failure'
+      run: |
+        echo "::warning::MegaLinter detected issues in the codebase. See the megalinter-reports folder or check annotations on changed files."
+
+    - name: Warn if SQLFluff failed
+      if: steps.sql_lint.outcome == 'failure'
+      run: |
+        echo "::warning::SQLFluff detected issues. SQL files may need fixes."
