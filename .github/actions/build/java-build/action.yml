@@ -5,7 +5,7 @@ inputs:
   java_version:
     description: 'Java version to use'
     required: false
-    default: '21'
+    default: '25'
   build_options:
     description: 'Additional build options'
     required: false
@@ -107,7 +107,7 @@ runs:
 
     - name: Upload native artifact
       if: inputs.build_type == 'native' && inputs.is_quarkus == 'true'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: artifact-java-${{ inputs.build_platform }}
         path: target
@@ -155,7 +155,7 @@ runs:
       if: inputs.build_type == 'native' && inputs.is_quarkus == 'true' && inputs.docker_username != ''
       uses: docker/build-push-action@v6
       with:
-        context: ./target/
+        context: .
         file: ./src/main/docker/Dockerfile.native-micro
         platforms: linux/${{ inputs.build_platform }}
         push: true

@@ -58,7 +58,7 @@ jobs:
       java_version: '21'              # Java version
       node_version: '22'              # Node.js version      
       build_type: 'legacy'           # 'legacy' or 'native' (for Quarkus)
-      build_platforms: ['amd64']     # Single platform: ['amd64'] or ['arm64'], Multi-arch: ['amd64', 'arm64']
+      build_platforms: '["amd64"]'     # Single platform: '["amd64"]' or '["arm64"]', Multi-arch: '["amd64", "arm64"]'
       container_build: false         # Enable container builds
       docker_image_name: 'org/repo'  # Required if container_build is true
       build_options: ''               # Additional build options
@@ -84,7 +84,7 @@ jobs:
     uses: filhype-organization/universal-devops-action/.github/workflows/github-actions.yml@v1
     with:
       java_version: '21'
-      build_platforms: ['amd64']
+      build_platforms: '["amd64"]'
       container_build: true
       docker_image_name: 'myorg/myapp'
     secrets:
@@ -131,7 +131,7 @@ jobs:
     with:
       java_version: '21'
       build_type: 'native'
-      build_platforms: ['amd64', 'arm64']
+      build_platforms: '["amd64", "arm64"]'
       container_build: true
       docker_image_name: 'myorg/myapp'
     secrets:
@@ -147,7 +147,7 @@ jobs:
     uses: filhype-organization/universal-devops-action/.github/workflows/github-actions.yml@v1
     with:
       build_type: 'legacy'
-      build_platforms: ['amd64', 'arm64']
+      build_platforms: '["amd64", "arm64"]'
       container_build: true
       docker_image_name: 'myorg/myapp'
     secrets:
@@ -329,7 +329,7 @@ Examples:
 
 ## Multi-Architecture Container Images
 
-For multi-platform builds (`build_platforms: ['amd64', 'arm64']`), the workflow creates:
+For multi-platform builds (`build_platforms: '["amd64", "arm64"]'`), the workflow creates:
 
 ### Platform-Specific Images
 Each build job pushes a platform-specific image:
@@ -365,7 +365,7 @@ docker manifest inspect myuser/myapp:v1.0.0-arm64  # Platform-specific image
 | java_version | Java version | No | 21 |
 | node_version | Node.js version | No | 22 |
 | build_type | Build type for Java projects ('legacy' or 'native') | No | legacy |
-| build_platforms | Target platforms for builds (array: ['amd64'], ['arm64'], or ['amd64', 'arm64']) | No | ['amd64'] |
+| build_platforms | Target platforms for builds (array: '["amd64"]', '["arm64"]', or '["amd64", "arm64"]') | No | '["amd64"]' |
 | container_build | Enable container builds | No | false |
 | docker_image_name | Name of your Docker image | Conditional* | N/A |
 | build_options | Additional build options | No | '' |
@@ -388,7 +388,7 @@ docker manifest inspect myuser/myapp:v1.0.0-arm64  # Platform-specific image
   - Quality checks without builds
   - Selective builds in monorepo scenarios
   - Documentation-only deployments
-- The `build_platforms` parameter accepts an array of platforms. For multi-architecture builds, specify multiple platforms: `['amd64', 'arm64']`
+- The `build_platforms` parameter accepts an array of platforms. For multi-architecture builds, specify multiple platforms: `'["amd64", "arm64"]'`
 
 ## Secrets
 
