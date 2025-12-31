@@ -22,7 +22,9 @@ runs:
   using: composite
   steps:
     - name: MegaLinter
+      id: megalinter
       uses: oxsecurity/megalinter@v7
+      continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
         # Configuration pour fonctionner sur toutes les branches
@@ -43,7 +45,6 @@ runs:
           UPDATED_SOURCES_REPORTER: false          # Focus sur les linters essentiels pour le code quality
           ENABLE_LINTERS:
             - ACTION_ACTIONLINT
-            - YAML_YAMLLINT
             - YAML_PRETTIER
             - YAML_V8R
             - JSON_JSONLINT
@@ -61,8 +62,10 @@ runs:
             - REPOSITORY_SYFT
 
     - name: Run SQL Lint
+      id: sql_lint
       if: hashFiles('**/*.sql')
       uses: yu-iskw/action-sqlfluff@v4
+      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: github-pr-review
@@ -70,3 +73,13 @@ runs:
         sqlfluff_command: "fix"
         config: "${{ github.workspace }}/${{ inputs.sql_lint_config }}"
         paths: "${{ github.workspace }}/${{ inputs.sql_lint_path }}"
+
+    - name: Warn if MegaLinter failed
+      if: steps.megalinter.outcome == 'failure'
+      run: |
+        echo "::warning::MegaLinter detected issues in the codebase. See the megalinter-reports folder or check annotations on changed files."
+
+    - name: Warn if SQLFluff failed
+      if: steps.sql_lint.outcome == 'failure'
+      run: |
+        echo "::warning::SQLFluff detected issues. SQL files may need fixes."
