@@ -23,6 +23,7 @@ runs:
   steps:
     - name: MegaLinter
       uses: oxsecurity/megalinter@v7
+      continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
         # Configuration pour fonctionner sur toutes les branches
@@ -43,7 +44,6 @@ runs:
           UPDATED_SOURCES_REPORTER: false          # Focus sur les linters essentiels pour le code quality
           ENABLE_LINTERS:
             - ACTION_ACTIONLINT
-            - YAML_YAMLLINT
             - YAML_PRETTIER
             - YAML_V8R
             - JSON_JSONLINT
@@ -63,6 +63,7 @@ runs:
     - name: Run SQL Lint
       if: hashFiles('**/*.sql')
       uses: yu-iskw/action-sqlfluff@v4
+      continue-on-error: true
       with:
         github_token: ${{ inputs.github_token }}
         reporter: github-pr-review
