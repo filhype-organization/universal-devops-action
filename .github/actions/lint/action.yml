@@ -76,10 +76,12 @@ runs:
 
     - name: Warn if MegaLinter failed
       if: steps.megalinter.outcome == 'failure'
+      shell: bash
       run: |
         echo "::warning::MegaLinter detected issues in the codebase. See the megalinter-reports folder or check annotations on changed files."
 
     - name: Warn if SQLFluff failed
       if: steps.sql_lint.outcome == 'failure'
+      shell: bash
       run: |
         echo "::warning::SQLFluff detected issues. SQL files may need fixes."
