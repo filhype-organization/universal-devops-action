@@ -112,10 +112,21 @@ jobs:
       quarkus: ${{ steps.project-type.outputs.quarkus }}
       mkdocs: ${{ steps.project-type.outputs.mkdocs }}
       outputs: ${{ steps.project-type.outputs.outputs }}
+      is_renovate: ${{ steps.renovate-check.outputs.is_renovate }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      
+
+      - name: Check if Renovate PR
+        id: renovate-check
+        shell: bash
+        run: |
+          if [[ "${{ github.actor }}" == "renovate[bot]" ]] || [[ "${{ github.head_ref }}" == renovate/* ]]; then
+            echo "is_renovate=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_renovate=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Get Context
         id: project-type
         uses: filhype-organization/universal-devops-action/.github/actions/get-context@main
@@ -340,7 +351,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     needs: [get-context, java-build, angular-build, create-manifest]
-    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
+    if: always() && needs.get-context.outputs.is_renovate != 'true' && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
     continue-on-error: true
     steps:
       - name: Checkout code
@@ -355,7 +366,7 @@ jobs:
   security:
     runs-on: ubuntu-latest
     needs: [get-context, java-build, angular-build, create-manifest]
-    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
+    if: always() && needs.get-context.outputs.is_renovate != 'true' && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -413,6 +424,7 @@ jobs:
   analysis:
     runs-on: ubuntu-latest
     needs: [get-context]
+    if: needs.get-context.outputs.is_renovate != 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
