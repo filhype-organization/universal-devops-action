@@ -61,7 +61,7 @@ jobs:
       build_platforms: '["amd64"]'     # Single platform: '["amd64"]' or '["arm64"]', Multi-arch: '["amd64", "arm64"]'
       container_build: false         # Enable container builds
       docker_image_name: 'org/repo'  # Required if container_build is true
-      build_options: ''               # Additional build options
+      build_options: ''               # Additional build optionsj
       test_options: ''                # Additional test options
       sql_lint_path: 'models'         # Path to SQL files
       sql_lint_config: '.sqlfluff'    # SQLFluff config file
