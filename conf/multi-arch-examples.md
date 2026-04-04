@@ -54,17 +54,16 @@ jobs:
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 ```
 
-## Build Single Architecture (Compatibilité)
+## Build Single Architecture
 
 ```yaml
-# Ancien paramètre build_platform toujours supporté
-name: Legacy Single Build
+name: Single Arch Build
 
 jobs:
   build:
     uses: filhype-organization/universal-devops-action/.github/workflows/github-actions.yml@v1
     with:
-      build_platform: 'arm64'  # Ancien paramètre
+      build_platforms: '["arm64"]'
       container_build: true
       docker_image_name: 'myorg/app'
 ```
@@ -88,7 +87,7 @@ jobs:
    - `myapp:v1.0.0-amd64`
    - `myapp:v1.0.0-arm64`
 
-4. **Création du Manifest** : Le job `amd64` (dernier) crée le manifest multi-arch
+4. **Création du Manifest** : Un job dédié `create-manifest` crée le manifest multi-arch après la fin de tous les builds
    ```bash
    docker manifest create myapp:v1.0.0 \
      myapp:v1.0.0-amd64 \
@@ -110,14 +109,14 @@ docker pull myorg/myapp:v1.0.0  # → tire automatiquement l'image arm64
 ## Migration depuis build_platform
 
 ```yaml
-# Avant (un seul build)
-build_platform: 'amd64'
+# Ancien paramètre (plus supporté)
+# build_platform: 'amd64'
 
-# Après (multi-arch)
-build_platforms: '["amd64", "arm64"]'
-
-# Ou maintenir un seul build
+# Nouveau (single arch)
 build_platforms: '["amd64"]'
+
+# Nouveau (multi-arch)
+build_platforms: '["amd64", "arm64"]'
 ```
 
-Le paramètre `build_platform` reste supporté pour la compatibilité ascendante.
+> **Note :** L'ancien paramètre `build_platform` (singulier) n'est plus supporté. Utiliser `build_platforms` (pluriel) avec un tableau JSON.

@@ -15,7 +15,7 @@ runs:
   using: composite
   steps:
     - name: Set up Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node_version }}
         cache: 'npm'    
@@ -76,7 +76,7 @@ runs:
     - name: Run tests
       shell: bash
       if: steps.check-tests.outputs.has_tests == 'true'
-      run: npm test -- --watch=false --progress=false
+      run: npm test -- --watch=false --progress=false ${{ inputs.test_options }}
 
     - name: Restore Karma config
       shell: bash
