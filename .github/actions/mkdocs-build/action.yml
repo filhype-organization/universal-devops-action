@@ -22,7 +22,7 @@ runs:
   using: composite
   steps:
     - name: Setup Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ inputs.python_version }}
 
@@ -31,7 +31,7 @@ runs:
       run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
 
     - name: Cache MkDocs materials
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         key: mkdocs-material-${{ env.cache_id }}
         path: .cache
@@ -85,7 +85,7 @@ runs:
 
     - name: Upload build artifacts
       if: inputs.deploy != 'true'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: mkdocs-site
         path: site/

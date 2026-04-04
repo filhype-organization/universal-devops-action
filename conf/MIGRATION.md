@@ -65,23 +65,9 @@ myorg/myapp:v1.0.0        # Manifest multi-arch
 
 ## Compatibilité
 
-### Rétrocompatibilité Assurée
-L'ancien paramètre `build_platform` continue de fonctionner :
+> **Note :** L'ancien paramètre `build_platform` (singulier) n'est plus supporté. Il faut utiliser `build_platforms` (pluriel) avec un tableau JSON.
 
-```yaml
-# Toujours supporté
-with:
-  build_platform: 'amd64'
-  
-# Équivalent à
-with:
-  build_platforms: '["amd64"]'
-```
-
-### Priorité des Paramètres
-1. Si `build_platforms` est fourni → utilise cette valeur
-2. Sinon, si `build_platform` est fourni → convertit en format tableau
-3. Sinon → utilise la valeur par défaut `["amd64"]`
+Si `build_platforms` n'est pas fourni, la valeur par défaut `["amd64"]` est utilisée.
 
 ## Exemples de Migration
 

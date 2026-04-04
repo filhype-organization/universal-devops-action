@@ -23,13 +23,12 @@ runs:
   steps:
     - name: MegaLinter
       id: megalinter
-      uses: oxsecurity/megalinter@v7
+      uses: oxsecurity/megalinter@v9
       continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
         # Configuration pour fonctionner sur toutes les branches
-        VALIDATE_ALL_CODEBASE: false        # Désactiver les linters problématiques et redondants
-        DISABLE_LINTERS: REPOSITORY_TRUFFLEHOG,REPOSITORY_TRIVY,REPOSITORY_GRYPE,REPOSITORY_DEVSKIM,COPYPASTE_JSCPD,SPELL_CSPELL,REPOSITORY_CHECKOV,REPOSITORY_GITLEAKS,TEKTON_TEKTON_LINT,KUBERNETES_KUBECONFORM,ANSIBLE_ANSIBLE_LINT,ARM_ARM_TTK,CLOUDFORMATION_CFN_LINT,TERRAFORM_TFLINT,TERRAFORM_TERRASCAN,TERRAFORM_TERRAGRUNT
+        VALIDATE_ALL_CODEBASE: false
         # Configuration de sortie optimisée
         REPORT_OUTPUT_FOLDER: megalinter-reports
         LOG_LEVEL: INFO

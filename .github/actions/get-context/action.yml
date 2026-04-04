@@ -72,13 +72,16 @@ runs:
           fi
         }
 
-        # Détection principale
+        # Détection principale (détections indépendantes pour supporter les projets mixtes)
+        DETECTED=false
+
         if [ -f "pom.xml" ]; then
           echo "✅ Maven project detected (pom.xml found)"
           outputs=$(echo "$outputs" | jq '. + {"java": true, "pom": true}')
           echo "java=true" >> $GITHUB_OUTPUT
           echo "pom=true" >> $GITHUB_OUTPUT
           detect_frameworks "pom.xml"
+          DETECTED=true
         elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
           echo "✅ Gradle project detected (build.gradle found)"
           outputs=$(echo "$outputs" | jq '. + {"java": true, "gradle": true}')
@@ -88,15 +91,25 @@ runs:
             detect_frameworks "build.gradle"
           else
             detect_frameworks "build.gradle.kts"
-          fi        elif [ -f "angular.json" ]; then
+          fi
+          DETECTED=true
+        fi
+
+        if [ -f "angular.json" ]; then
           echo "✅ Angular project detected (angular.json found)"
           outputs=$(echo "$outputs" | jq '. + {"angular": true}')
           echo "angular=true" >> $GITHUB_OUTPUT
-        elif [ -f "mkdocs.yml" ] || [ -f "mkdocs.yaml" ]; then
+          DETECTED=true
+        fi
+
+        if [ -f "mkdocs.yml" ] || [ -f "mkdocs.yaml" ]; then
           echo "✅ MkDocs project detected (mkdocs.yml found)"
           outputs=$(echo "$outputs" | jq '. + {"mkdocs": true}')
           echo "mkdocs=true" >> $GITHUB_OUTPUT
-        else
+          DETECTED=true
+        fi
+
+        if [ "$DETECTED" = "false" ]; then
           echo "ℹ️ No specific project type detected"
         fi
 

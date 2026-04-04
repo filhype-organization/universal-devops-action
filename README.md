@@ -61,7 +61,7 @@ jobs:
       build_platforms: '["amd64"]'     # Single platform: '["amd64"]' or '["arm64"]', Multi-arch: '["amd64", "arm64"]'
       container_build: false         # Enable container builds
       docker_image_name: 'org/repo'  # Required if container_build is true
-      build_options: ''               # Additional build options
+      build_options: ''               # Additional build optionsj
       test_options: ''                # Additional test options
       sql_lint_path: 'models'         # Path to SQL files
       sql_lint_config: '.sqlfluff'    # SQLFluff config file
@@ -228,6 +228,11 @@ For Java projects, it also detects the framework:
    - Runs independently of build status
    - SARIF reports uploaded to GitHub Security tab when possible
    - Waits for build and manifest jobs to complete
+
+9. **analysis** (Always runs)
+   - Sets up Renovate configuration for automated dependency management
+   - Creates `renovate.json` and `.github/renovate.json5` if not already present
+   - Configurable schedule, auto-merge for patches and dev dependencies
 
 ### Security Actions (Modular)
 
@@ -406,25 +411,25 @@ The `get-context` job provides detailed information about the detected project:
 
 | Output | Description | Example Values |
 |--------|-------------|----------------|
-| has_java | Java project detected | `true`, `false` |
-| has_maven | Maven build system detected | `true`, `false` |
-| has_gradle | Gradle build system detected | `true`, `false` |
-| has_angular | Angular project detected | `true`, `false` |
-| has_spring | Spring Boot framework detected | `true`, `false` |
-| has_quarkus | Quarkus framework detected | `true`, `false` |
-| has_mkdocs | MkDocs documentation project detected | `true`, `false` |
+| java | Java project detected | `true`, `false` |
+| pom | Maven build system detected (pom.xml) | `true`, `false` |
+| gradle | Gradle build system detected | `true`, `false` |
+| angular | Angular project detected | `true`, `false` |
+| spring | Spring Boot framework detected | `true`, `false` |
+| quarkus | Quarkus framework detected | `true`, `false` |
+| mkdocs | MkDocs documentation project detected | `true`, `false` |
 
 ### Job Execution Logic
 
-| Scenario | lint | security | java-build | angular-build | mkdocs-build | test |
-|----------|------|----------|------------|---------------|--------------|------|
-| Java project + `enable_java_build: true` | ✅ Always | ✅ Always | ✅ Runs | ❌ Skipped | ❌ Skipped | ✅ If build succeeds |
-| Java project + `enable_java_build: false` | ✅ Always | ✅ Always | ❌ Disabled | ❌ Skipped | ❌ Skipped | ❌ Skipped |
-| Angular project + `enable_angular_build: true` | ✅ Always | ✅ Always | ❌ Skipped | ✅ Runs | ❌ Skipped | ✅ If build succeeds |
-| Angular project + `enable_angular_build: false` | ✅ Always | ✅ Always | ❌ Skipped | ❌ Disabled | ❌ Skipped | ❌ Skipped |
-| MkDocs project + `enable_mkdocs_build: true` | ✅ Always | ✅ Always | ❌ Skipped | ❌ Skipped | ✅ Runs | ❌ Skipped |
-| MkDocs project + `enable_mkdocs_build: false` | ✅ Always | ✅ Always | ❌ Skipped | ❌ Skipped | ❌ Disabled | ❌ Skipped |
-| No builds enabled | ✅ Always | ✅ Always | ❌ Disabled | ❌ Disabled | ❌ Disabled | ❌ Skipped |
+| Scenario | test | java-build | angular-build | mkdocs-build | lint | security |
+|----------|------|------------|---------------|--------------|------|----------|
+| Java project + `enable_java_build: true` | ✅ Runs first | ✅ After tests | ❌ Skipped | ❌ Skipped | ✅ Always | ✅ Always |
+| Java project + `enable_java_build: false` | ✅ Runs | ❌ Disabled | ❌ Skipped | ❌ Skipped | ✅ Always | ✅ Always |
+| Angular project + `enable_angular_build: true` | ✅ Runs first | ❌ Skipped | ✅ After tests | ❌ Skipped | ✅ Always | ✅ Always |
+| Angular project + `enable_angular_build: false` | ✅ Runs | ❌ Skipped | ❌ Disabled | ❌ Skipped | ✅ Always | ✅ Always |
+| MkDocs project + `enable_mkdocs_build: true` | ❌ Skipped | ❌ Skipped | ❌ Skipped | ✅ Runs | ✅ Always | ✅ Always |
+| MkDocs project + `enable_mkdocs_build: false` | ❌ Skipped | ❌ Skipped | ❌ Skipped | ❌ Disabled | ✅ Always | ✅ Always |
+| No builds enabled | ❌ Skipped | ❌ Disabled | ❌ Disabled | ❌ Disabled | ✅ Always | ✅ Always |
 
 ### Security Report Outputs
 
@@ -638,6 +643,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - ✅ **Multi-architecture build support** for Java native and container images
 - ✅ **Docker multi-arch manifest** generation for seamless image pulling
 - ✅ **Parallel builds** with matrix strategy for multiple platforms
-- ✅ **Backward compatibility** with existing `build_platform` parameter
+- ✅ **Migration** from `build_platform` to `build_platforms` (JSON array)
 - ✅ **Enhanced build_platforms parameter** supporting JSON arrays for multiple architectures
 - ✅ **Improved documentation** for multi-architecture builds and implementation details

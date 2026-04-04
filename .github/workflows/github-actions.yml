@@ -71,11 +71,6 @@ on:
         required: false
         type: boolean
         default: true
-      run_tests:
-        description: 'Whether to run tests before building (Angular)'
-        required: false
-        type: boolean
-        default: true
       enable_mkdocs_build:
         description: 'Enable MkDocs build and deploy job'
         required: false
@@ -91,6 +86,11 @@ on:
         required: false
         type: string
         default: 'mkdocs-material'
+      mkdocs_deploy:
+        description: 'Deploy MkDocs to GitHub Pages (set to false to only build without deploying)'
+        required: false
+        type: boolean
+        default: true
     secrets:
       GH_TOKEN:
         description: 'GitHub token for authentication'
@@ -114,7 +114,7 @@ jobs:
       outputs: ${{ steps.project-type.outputs.outputs }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Get Context
         id: project-type
@@ -126,7 +126,7 @@ jobs:
     needs: [get-context]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         
       - name: Display Context
         shell: bash
@@ -148,14 +148,11 @@ jobs:
   
   test-node:
     runs-on: ubuntu-latest
-    container: 
-      image: trion/ng-cli-e2e:latest
-      options: --user root
     if: needs.get-context.outputs.angular == 'true'
     needs: [get-context]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         
       - name: Display Context
         shell: bash
@@ -178,7 +175,7 @@ jobs:
         platform: ${{ fromJSON(inputs.build_platforms || '["amd64"]') }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build Java Project
         id: build
         uses: filhype-organization/universal-devops-action/.github/actions/build/java-build@main
@@ -187,6 +184,7 @@ jobs:
           build_options: ${{ inputs.build_options }}
           build_type: ${{ inputs.build_type }}
           build_platform: ${{ matrix.platform }}
+          project_type: ${{ (needs.get-context.outputs.pom == 'true' && 'maven') || 'gradle' }}
           docker_username: ${{ secrets.DOCKER_USERNAME }}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
           docker_image_name: ${{ inputs.docker_image_name }}
@@ -202,7 +200,7 @@ jobs:
         platform: ${{ fromJSON(inputs.build_platforms || '["amd64"]') }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build Angular Project
         id: build
         uses: filhype-organization/universal-devops-action/.github/actions/build/angular-build@main
@@ -219,16 +217,16 @@ jobs:
   create-manifest:
     runs-on: ubuntu-latest
     needs: [java-build, angular-build, get-context]
-    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success') && inputs.container_build == true && inputs.docker_image_name != ''
+    if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success') && inputs.docker_image_name != '' && (inputs.container_build == true || inputs.build_type == 'native')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
@@ -346,7 +344,7 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Run Linters
         uses: filhype-organization/universal-devops-action/.github/actions/lint@main
         with:
@@ -360,7 +358,7 @@ jobs:
     if: always() && (needs.java-build.result == 'success' || needs.angular-build.result == 'success' || needs.java-build.result == 'skipped' || needs.angular-build.result == 'skipped')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         
       - name: Run TruffleHog Secret Scanning
         uses: filhype-organization/universal-devops-action/.github/actions/security/trufflehog@main
@@ -372,7 +370,7 @@ jobs:
         with:
           severity: 'CRITICAL,HIGH'
           upload_sarif: 'true'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GH_TOKEN }}
           
       - name: Security Scan Summary
         shell: bash
@@ -380,7 +378,8 @@ jobs:
           echo "🛡️ Security scanning completed!"
           echo "✅ TruffleHog secret detection: Done"
           echo "✅ Trivy vulnerability analysis: Done"
-          echo ""          echo "📊 Check the following for results:"
+          echo ""
+          echo "📊 Check the following for results:"
           echo "  - GitHub Security tab for Trivy SARIF results"
           echo "  - Job logs for TruffleHog secret detection"
           echo "  - Any failed steps indicate security issues to address"
@@ -390,7 +389,7 @@ jobs:
     if: needs.get-context.outputs.mkdocs == 'true' && inputs.enable_mkdocs_build == true
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -399,8 +398,8 @@ jobs:
         with:
           python_version: ${{ inputs.python_version }}
           mkdocs_requirements: ${{ inputs.mkdocs_requirements }}
-          deploy: 'true'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          deploy: ${{ inputs.mkdocs_deploy && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+          github_token: ${{ secrets.GH_TOKEN }}
 
       - name: MkDocs Build Summary
         shell: bash
@@ -416,7 +415,7 @@ jobs:
     needs: [get-context]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Setup Renovate Configuration
         uses: filhype-organization/universal-devops-action/.github/actions/analysis/renovate@main
