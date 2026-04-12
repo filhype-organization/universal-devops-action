@@ -60,6 +60,16 @@ runs:
         echo "version=${VERSION}" >> $GITHUB_OUTPUT
         echo "version=${VERSION}" >> $GITHUB_ENV
 
+    - name: Check Docker credentials
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.docker_username }}" ]; then
+          echo "⚠️ docker_username is empty — login and push will be skipped"
+          echo "Make sure DOCKER_USERNAME and DOCKER_TOKEN secrets are configured and passed to this workflow"
+        else
+          echo "✅ Docker credentials provided, push will proceed"
+        fi
+
     - name: Login to Docker Hub OCI registry
       if: inputs.docker_username != ''
       shell: bash
