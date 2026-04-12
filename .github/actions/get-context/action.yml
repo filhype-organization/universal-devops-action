@@ -29,6 +29,9 @@ outputs:
   mkdocs:
     description: 'Whether MkDocs is detected'
     value: ${{ steps.project-type.outputs.mkdocs }}
+  timoni:
+    description: 'Whether a Timoni module is detected'
+    value: ${{ steps.project-type.outputs.timoni }}
   outputs:
     description: 'JSON object with all detected technologies'
     value: ${{ steps.project-type.outputs.outputs }}
@@ -52,9 +55,10 @@ runs:
         echo "spring=false" >> $GITHUB_OUTPUT
         echo "quarkus=false" >> $GITHUB_OUTPUT
         echo "mkdocs=false" >> $GITHUB_OUTPUT
+        echo "timoni=false" >> $GITHUB_OUTPUT
 
         # Réinitialisation des variables en JSON
-        outputs='{"java":false,"pom":false,"gradle":false,"angular":false,"spring":false,"quarkus":false,"mkdocs":false}'
+        outputs='{"java":false,"pom":false,"gradle":false,"angular":false,"spring":false,"quarkus":false,"mkdocs":false,"timoni":false}'
 
         # Fonction de détection
         detect_frameworks() {
@@ -106,6 +110,13 @@ runs:
           echo "✅ MkDocs project detected (mkdocs.yml found)"
           outputs=$(echo "$outputs" | jq '. + {"mkdocs": true}')
           echo "mkdocs=true" >> $GITHUB_OUTPUT
+          DETECTED=true
+        fi
+
+        if [ -f "timoni.cue" ]; then
+          echo "✅ Timoni module detected (timoni.cue found)"
+          outputs=$(echo "$outputs" | jq '. + {"timoni": true}')
+          echo "timoni=true" >> $GITHUB_OUTPUT
           DETECTED=true
         fi
 

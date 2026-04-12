@@ -1,0 +1,84 @@
+name: Timoni Build
+description: 'Build and push Timoni modules to an OCI registry (Docker Hub)'
+
+inputs:
+  timoni_version:
+    description: 'Timoni CLI version to install (e.g. v0.23.0). Defaults to latest.'
+    required: false
+    default: 'latest'
+  module_path:
+    description: 'Path to the Timoni module directory'
+    required: false
+    default: '.'
+  docker_username:
+    description: 'Docker Hub username for pushing the OCI artifact'
+    required: false
+  docker_token:
+    description: 'Docker Hub token for authentication'
+    required: false
+  docker_image_name:
+    description: 'OCI artifact name with repository (e.g. username/my-module)'
+    required: true
+  tag:
+    description: 'Override version tag (takes precedence over Git tags and commit SHA)'
+    required: false
+
+outputs:
+  module_url:
+    description: 'The full OCI URL of the pushed module'
+    value: ${{ steps.push-module.outputs.module_url }}
+  version:
+    description: 'The version tag used for this push'
+    value: ${{ steps.get-version.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install Timoni CLI
+      uses: stefanprodan/timoni/actions/setup@main
+      with:
+        version: ${{ inputs.timoni_version }}
+
+    - name: Get version
+      id: get-version
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.tag }}" ]; then
+          VERSION="${{ inputs.tag }}"
+        else
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=$(git rev-parse --short HEAD)
+          fi
+
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          if [ "$BRANCH_NAME" != "main" ]; then
+            VERSION="${VERSION}-snapshot"
+          fi
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "version=${VERSION}" >> $GITHUB_ENV
+
+    - name: Login to Docker Hub OCI registry
+      if: inputs.docker_username != ''
+      shell: bash
+      run: |
+        timoni registry login docker.io \
+          --username "${{ inputs.docker_username }}" \
+          --password "${{ inputs.docker_token }}"
+
+    - name: Push Timoni module
+      if: inputs.docker_username != ''
+      id: push-module
+      shell: bash
+      run: |
+        OCI_URL="oci://docker.io/${{ inputs.docker_image_name }}"
+        echo "Pushing Timoni module from '${{ inputs.module_path }}' to: ${OCI_URL}:${{ env.version }}"
+
+        timoni mod push "${{ inputs.module_path }}" "${OCI_URL}" \
+          --version "${{ env.version }}"
+
+        echo "module_url=${OCI_URL}:${{ env.version }}" >> $GITHUB_OUTPUT
+        echo "✅ Timoni module pushed successfully"
+        echo "  URL: ${OCI_URL}:${{ env.version }}"
