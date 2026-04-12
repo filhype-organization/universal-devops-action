@@ -45,13 +45,11 @@ runs:
       run: |
         if [ -n "${{ inputs.tag }}" ]; then
           VERSION="${{ inputs.tag }}"
+        elif [[ $GITHUB_REF == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${VERSION#v}
         else
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            VERSION=$(git rev-parse --short HEAD)
-          fi
-
+          VERSION=$(git rev-parse --short HEAD)
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
           if [ "$BRANCH_NAME" != "main" ]; then
             VERSION="${VERSION}-snapshot"

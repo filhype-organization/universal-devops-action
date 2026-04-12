@@ -102,16 +102,11 @@ runs:
         # Check if tag input is provided
         if [ -n "${{ inputs.tag }}" ]; then
           VERSION="${{ inputs.tag }}"
+        elif [[ $GITHUB_REF == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${VERSION#v}
         else
-          # Check if we're on a tag
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            # Use short commit SHA
-            VERSION=$(git rev-parse --short HEAD)
-          fi
-
-          # Add snapshot suffix if not on main branch
+          VERSION=$(git rev-parse --short HEAD)
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
           if [ "$BRANCH_NAME" != "main" ]; then
             VERSION="${VERSION}-snapshot"

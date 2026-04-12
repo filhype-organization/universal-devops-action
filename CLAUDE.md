@@ -28,11 +28,12 @@ Each action is self-contained with its own `action.yml`:
 
 | Action | Path | Purpose |
 |--------|------|---------|
-| get-context | `get-context/` | Detects project type (Java/Angular/MkDocs) and framework (Spring/Quarkus) by checking for `pom.xml`, `build.gradle`, `angular.json`, `mkdocs.yml` |
+| get-context | `get-context/` | Detects project type (Java/Angular/MkDocs/Timoni) and framework (Spring/Quarkus) by checking for `pom.xml`, `build.gradle`, `angular.json`, `mkdocs.yml`, `timoni.cue` |
 | java-test | `test/java-test/` | Runs `mvn test` or `./gradlew test` |
 | angular-test | `test/angular-test/` | Runs `npm test` with CI-patched Karma config (ChromeHeadless, singleRun) |
 | java-build | `build/java-build/` | Maven/Gradle build, supports legacy and Quarkus native compilation, Docker push |
 | angular-build | `build/angular-build/` | `npm run build`, optional Docker push |
+| timoni-build | `build/timoni-build/` | Installs Timoni CLI (via `stefanprodan/timoni/actions/setup`), pushes module as OCI artifact to Docker Hub |
 | mkdocs-build | `mkdocs-build/` | Builds and deploys MkDocs to GitHub Pages |
 | lint | `lint/` | MegaLinter (code quality) + SQLFluff (SQL linting) |
 | trivy | `security/trivy/` | Vulnerability scanning with SARIF upload |
@@ -44,6 +45,7 @@ Each action is self-contained with its own `action.yml`:
 get-context
   ├── test (Java) ──────────┐
   ├── test-node (Angular) ──┤
+  ├── timoni-build          │
   ├── mkdocs-build          │
   └── analysis              │
                             ├── java-build ────┐
@@ -67,7 +69,8 @@ Build jobs use a matrix strategy over `build_platforms` (e.g., `["amd64", "arm64
 ## Key Patterns When Editing
 
 - All composite actions use `shell: bash` and `runs.using: composite`
-- Version tagging logic (tag > git tag > commit SHA, with `-snapshot` suffix for non-main branches) is duplicated in `java-build`, `angular-build`, and the `create-manifest` step in the main workflow
+- Version tagging logic (tag > git tag > commit SHA, with `-snapshot` suffix for non-main branches) is duplicated in `java-build`, `angular-build`, `timoni-build`, and the `create-manifest` step in the main workflow. Git tags with or without `v` prefix are both supported (`${GITHUB_REF#refs/tags/}` then `${VERSION#v}`)
+- Timoni requires valid semver — non-semver versions (SHA, SHA-snapshot) are prefixed with `0.0.0-` in `timoni-build`
 - The `if: always()` pattern is used on lint/security jobs so they run regardless of build outcome
 - `continue-on-error: true` makes lint non-blocking
 - `provenance: false` is required on `docker/build-push-action` to get single-platform images (not manifest lists)
