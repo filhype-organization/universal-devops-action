@@ -4,7 +4,7 @@
   <img src="asset/universal-github-action.png" alt="Universal GitHub Action" width="300"/>
 </div>
 
-A reusable GitHub Actions workflow that provides a complete CI/CD pipeline with support for Java (Spring/Quarkus) and Angular projects. This workflow automatically detects your project type and executes the appropriate build, test, and quality check steps.
+A reusable GitHub Actions workflow that provides a complete CI/CD pipeline with support for Java (Spring/Quarkus), Angular, MkDocs, and Timoni projects. This workflow automatically detects your project type and executes the appropriate build, test, and quality check steps.
 
 ## Features
 
@@ -12,11 +12,13 @@ A reusable GitHub Actions workflow that provides a complete CI/CD pipeline with 
   - Java (Maven/Gradle)
   - Angular
   - MkDocs documentation sites
+  - Timoni modules (CUE-based Kubernetes packages)
   - Framework detection (Spring Boot/Quarkus)
 - 🏗️ **Build Support**
   - Java builds (legacy and native compilation for Quarkus)
   - Angular builds with production optimization
   - MkDocs documentation builds with GitHub Pages deployment
+  - Timoni module builds and OCI push to Docker Hub
   - Multi-architecture support (x86/arm64)
   - Optional build disabling for specific project types
 - 🐳 **Container Support**
@@ -69,6 +71,9 @@ jobs:
       # Build control parameters
       enable_java_build: true         # Enable/disable Java builds
       enable_angular_build: true      # Enable/disable Angular builds
+      enable_timoni_build: true       # Enable/disable Timoni module push
+      timoni_version: 'latest'        # Timoni CLI version (e.g. v0.26.0)
+      timoni_module_path: '.'         # Path to Timoni module directory
     secrets:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}  # Optional
@@ -123,6 +128,20 @@ jobs:
       id-token: write
 ```
 
+### Timoni Module (Kubernetes package)
+```yaml
+jobs:
+  build:
+    uses: filhype-organization/universal-devops-action/.github/workflows/github-actions.yml@v1
+    with:
+      docker_image_name: 'myorg/my-module'
+      # timoni_module_path: './timoni'  # if module is in a subdirectory
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+```
+
 ### Multi-Architecture Native Build
 ```yaml
 jobs:
@@ -165,6 +184,7 @@ The workflow automatically detects your project type based on the presence of sp
 - `build.gradle` or `build.gradle.kts` → Java with Gradle
 - `angular.json` → Angular
 - `mkdocs.yml` or `mkdocs.yaml` → MkDocs documentation
+- `timoni.cue` → Timoni module (CUE-based Kubernetes package)
 
 For Java projects, it also detects the framework:
 - Spring Boot: Checks for `org.springframework.boot` dependency
@@ -207,6 +227,13 @@ For Java projects, it also detects the framework:
    - Creates multi-arch manifest list (`image:version`) pointing to all available platforms
    - Creates `latest` tag for main branch releases
    - Handles cases where only some platforms build successfully
+
+5. **timoni-build** (Conditional)
+   - Runs if a Timoni module is detected (`timoni.cue` present) AND `enable_timoni_build` is true
+   - Installs Timoni CLI via the official `stefanprodan/timoni/actions/setup` action
+   - Pushes the module as an OCI artifact to Docker Hub (`oci://docker.io/<docker_image_name>`)
+   - Version: Git tag → commit SHA (prefixed `0.0.0-` for semver compliance) + `-snapshot` on non-main branches
+   - No test phase (Timoni modules are Kubernetes configuration, not application code)
 
 6. **mkdocs-build** (Conditional)
    - Runs if MkDocs project is detected AND `enable_mkdocs_build` is true
@@ -382,10 +409,13 @@ docker manifest inspect myuser/myapp:v1.0.0-arm64  # Platform-specific image
 | **enable_java_build** | **Enable/disable Java build jobs** | **No** | **true** |
 | **enable_angular_build** | **Enable/disable Angular build jobs** | **No** | **true** |
 | **enable_mkdocs_build** | **Enable/disable MkDocs build and deploy jobs** | **No** | **true** |
+| **enable_timoni_build** | **Enable/disable Timoni module push** | **No** | **true** |
 | **python_version** | **Python version for MkDocs** | **No** | **3.x** |
 | **mkdocs_requirements** | **MkDocs packages (space-separated)** | **No** | **mkdocs-material** |
+| **timoni_version** | **Timoni CLI version (e.g. v0.26.0)** | **No** | **latest** |
+| **timoni_module_path** | **Path to the Timoni module directory** | **No** | **.** |
 
-\* Required if container_build is true
+\* Required if container_build is true or Timoni module detected
 
 **Note:** 
 - The `enable_java_build`, `enable_angular_build`, and `enable_mkdocs_build` parameters allow you to disable specific build jobs while still running lint and security checks. This is useful for:
@@ -418,18 +448,21 @@ The `get-context` job provides detailed information about the detected project:
 | spring | Spring Boot framework detected | `true`, `false` |
 | quarkus | Quarkus framework detected | `true`, `false` |
 | mkdocs | MkDocs documentation project detected | `true`, `false` |
+| timoni | Timoni module detected (timoni.cue present) | `true`, `false` |
 
 ### Job Execution Logic
 
-| Scenario | test | java-build | angular-build | mkdocs-build | lint | security |
-|----------|------|------------|---------------|--------------|------|----------|
-| Java project + `enable_java_build: true` | ✅ Runs first | ✅ After tests | ❌ Skipped | ❌ Skipped | ✅ Always | ✅ Always |
-| Java project + `enable_java_build: false` | ✅ Runs | ❌ Disabled | ❌ Skipped | ❌ Skipped | ✅ Always | ✅ Always |
-| Angular project + `enable_angular_build: true` | ✅ Runs first | ❌ Skipped | ✅ After tests | ❌ Skipped | ✅ Always | ✅ Always |
-| Angular project + `enable_angular_build: false` | ✅ Runs | ❌ Skipped | ❌ Disabled | ❌ Skipped | ✅ Always | ✅ Always |
-| MkDocs project + `enable_mkdocs_build: true` | ❌ Skipped | ❌ Skipped | ❌ Skipped | ✅ Runs | ✅ Always | ✅ Always |
-| MkDocs project + `enable_mkdocs_build: false` | ❌ Skipped | ❌ Skipped | ❌ Skipped | ❌ Disabled | ✅ Always | ✅ Always |
-| No builds enabled | ❌ Skipped | ❌ Disabled | ❌ Disabled | ❌ Disabled | ✅ Always | ✅ Always |
+| Scenario | test | java-build | angular-build | timoni-build | mkdocs-build | lint | security |
+|----------|------|------------|---------------|--------------|--------------|------|----------|
+| Java project + `enable_java_build: true` | ✅ Runs first | ✅ After tests | ❌ Skipped | ❌ Skipped | ❌ Skipped | ✅ Always | ✅ Always |
+| Java project + `enable_java_build: false` | ✅ Runs | ❌ Disabled | ❌ Skipped | ❌ Skipped | ❌ Skipped | ✅ Always | ✅ Always |
+| Angular project + `enable_angular_build: true` | ✅ Runs first | ❌ Skipped | ✅ After tests | ❌ Skipped | ❌ Skipped | ✅ Always | ✅ Always |
+| Angular project + `enable_angular_build: false` | ✅ Runs | ❌ Skipped | ❌ Disabled | ❌ Skipped | ❌ Skipped | ✅ Always | ✅ Always |
+| Timoni project + `enable_timoni_build: true` | ❌ Skipped | ❌ Skipped | ❌ Skipped | ✅ Runs | ❌ Skipped | ✅ Always | ✅ Always |
+| Timoni project + `enable_timoni_build: false` | ❌ Skipped | ❌ Skipped | ❌ Skipped | ❌ Disabled | ❌ Skipped | ✅ Always | ✅ Always |
+| MkDocs project + `enable_mkdocs_build: true` | ❌ Skipped | ❌ Skipped | ❌ Skipped | ❌ Skipped | ✅ Runs | ✅ Always | ✅ Always |
+| MkDocs project + `enable_mkdocs_build: false` | ❌ Skipped | ❌ Skipped | ❌ Skipped | ❌ Skipped | ❌ Disabled | ✅ Always | ✅ Always |
+| No builds enabled | ❌ Skipped | ❌ Disabled | ❌ Disabled | ❌ Disabled | ❌ Disabled | ✅ Always | ✅ Always |
 
 ### Security Report Outputs
 
@@ -554,6 +587,12 @@ with:
 - **TruffleHog false positives**: Use `.trufflehogignore` file or adjust `trufflehog_args`
 - **Trivy scan errors**: Check `.trivy.yaml` configuration or network connectivity
 
+#### Timoni Build Issues
+- **OCI push fails**: Verify `DOCKER_USERNAME` and `DOCKER_TOKEN` secrets are set and the repo has access to them (org secrets require explicit repo authorization)
+- **Invalid semantic version**: Git SHAs are automatically prefixed with `0.0.0-` — use a Git tag (e.g. `v1.0.0` or `1.0.0`) for a clean version
+- **Module not detected**: Ensure a `timoni.cue` file exists at the root (or at `timoni_module_path`)
+- **Timoni CLI version**: Pin `timoni_version` to a specific release (e.g. `v0.26.0`) for reproducible builds
+
 #### Container Build Issues
 - **Docker authentication fails**: Verify `DOCKER_USERNAME` and `DOCKER_TOKEN` secrets
 - **Multi-arch build slow**: Consider using single platform builds for faster iteration
@@ -623,6 +662,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Changelog
 
 ### Latest Updates
+- ✅ **Added Timoni module support**: auto-detection via `timoni.cue`, OCI push to Docker Hub via `timoni mod push`
+- ✅ **Fixed version tag parsing**: tags with or without `v` prefix now work correctly across all build actions
 - ✅ **Refactored multi-arch builds**: True multi-architecture Docker builds with dedicated manifest job
 - ✅ **Fixed ARM64/AMD64 timing issues**: Each platform builds independently without timeouts
 - ✅ **Platform-specific image pushing**: Each build pushes its own `image:version-platform` tag
