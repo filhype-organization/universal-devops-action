@@ -8,7 +8,8 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(curl -sL \"https://api.github.com/repos/wcygan/wcygan.net/git/trees/main?recursive=1\")",
       "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(x['path']\\) for x in data.get\\('tree',[]\\) if 'SKILL' in x['path'] or 'skill' in x['path'].lower\\(\\)]\")",
-      "Bash(curl -sL \"https://api.github.com/repos/JamesPrial/github-skills/git/trees/main?recursive=1\")"
+      "Bash(curl -sL \"https://api.github.com/repos/JamesPrial/github-skills/git/trees/main?recursive=1\")",
+      "WebFetch(domain:timoni.sh)"
     ]
   }
 }
