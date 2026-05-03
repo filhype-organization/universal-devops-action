@@ -27,38 +27,20 @@ runs:
       continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
-        # Configuration pour fonctionner sur toutes les branches
         VALIDATE_ALL_CODEBASE: false
-        # Configuration de sortie optimisée
         REPORT_OUTPUT_FOLDER: megalinter-reports
         LOG_LEVEL: INFO
-        # Éviter les erreurs sur les fichiers ignorés
-        FILTER_REGEX_EXCLUDE: '(\.git/|node_modules/|\.venv/|__pycache__/|dist/|build/|target/)'        # Performance : analyser seulement les fichiers modifiés sur les PR
+        FILTER_REGEX_EXCLUDE: '(\.git/|node_modules/|\.venv/|__pycache__/|dist/|build/|target/)'
         DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
-        # Optimisation des performances
         PARALLEL_PROCESS_NUMBER: 4
-        # Configuration pour les PR et commits
-        MEGALINTER_CONFIG: |
-          SHOW_ELAPSED_TIME: true
-          FILEIO_REPORTER: false
-          UPDATED_SOURCES_REPORTER: false          # Focus sur les linters essentiels pour le code quality
-          ENABLE_LINTERS:
-            - ACTION_ACTIONLINT
-            - YAML_PRETTIER
-            - YAML_V8R
-            - JSON_JSONLINT
-            - JSON_PRETTIER
-            - JAVASCRIPT_ES
-            - TYPESCRIPT_ES
-            - PYTHON_FLAKE8
-            - PYTHON_BLACK
-            - JAVA_CHECKSTYLE
-            - MARKDOWN_MARKDOWNLINT
-            - DOCKERFILE_HADOLINT
-            - SPELL_LYCHEE
-            - GIT_GIT_DIFF
-            - REPOSITORY_DUSTILOCK
-            - REPOSITORY_SYFT
+        SHOW_ELAPSED_TIME: true
+        FILEIO_REPORTER: false
+        UPDATED_SOURCES_REPORTER: false
+        ENABLE_LINTERS: >-
+          ACTION_ACTIONLINT,YAML_PRETTIER,YAML_V8R,JSON_JSONLINT,JSON_PRETTIER,
+          JAVASCRIPT_ES,TYPESCRIPT_ES,PYTHON_FLAKE8,PYTHON_BLACK,JAVA_CHECKSTYLE,
+          MARKDOWN_MARKDOWNLINT,DOCKERFILE_HADOLINT,SPELL_LYCHEE,GIT_GIT_DIFF,
+          REPOSITORY_DUSTILOCK,REPOSITORY_SYFT
 
     - name: Run SQL Lint
       id: sql_lint
