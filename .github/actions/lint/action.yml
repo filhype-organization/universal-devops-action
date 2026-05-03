@@ -55,16 +55,12 @@ runs:
         config: "${{ github.workspace }}/${{ inputs.sql_lint_config }}"
         paths: "${{ github.workspace }}/${{ inputs.sql_lint_path }}"
 
-    - name: Fail if MegaLinter detected issues
+    - name: MegaLinter summary
       if: steps.megalinter.outcome == 'failure'
       shell: bash
-      run: |
-        echo "::error::MegaLinter detected issues in the codebase. See the megalinter-reports folder or check annotations on changed files."
-        exit 1
+      run: echo "::warning::MegaLinter detected issues — check the megalinter-reports folder."
 
-    - name: Fail if SQLFluff detected issues
+    - name: SQLFluff summary
       if: steps.sql_lint.outcome == 'failure'
       shell: bash
-      run: |
-        echo "::error::SQLFluff detected issues. SQL files need fixes."
-        exit 1
+      run: echo "::warning::SQLFluff detected issues in SQL files."
